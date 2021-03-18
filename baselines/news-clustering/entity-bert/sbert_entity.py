@@ -27,7 +27,8 @@ from sentence_transformers import __version__
 
 logger = logging.getLogger(__name__)
 
-from transformer_entity import *
+from transformer_entity import BertEntityEmbeddings, EntityBertModel
+from transformer_entity import EntityTransformer
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -742,58 +743,64 @@ def triplets_from_labeled_dataset(input_examples):
 
     return triplets
 
+def main():
 
-model_name = 'bert-base-nli-stsb-mean-tokens'
-num_epochs = 2
-triplet_margin = 2.0 # default value
-train_batch_size = 16
-# model_save_path = "./eventsim_output/{}-ep{}-b{}-m{}.pt".format(model_name, num_epochs, train_batch_size, triplet_margin)
-model_save_path = "../eventsim_output/esbert-{}-ep{}-b{}-m{}.pt".format(model_name, num_epochs, train_batch_size, triplet_margin)
-
-
-# read data in pickle format
-with open('./train_dev.pickle', 'rb') as handle:
-    train_dev_corpus = pickle.load(handle)
-
-with open('./test.pickle', 'rb') as handle:
-    test_corpus = pickle.load(handle)
-
-# loading models
-model = EntitySentenceTransformer("./pretrained/")
-model[0] = EntityTransformer("./pretrained/0_Transformer/")
-model[0].max_seq_length = 512
-print(model[0].auto_model.embeddings)
-print(model[0].max_seq_length)
-print("finished loading models")
-
-# data loader
-train_ones = train_dev_corpus.documents[:10]
-train_examples = [InputExample(texts=d['text'], label=d['cluster'], guid=d['id'], entities=d['bert_entities']) for d in train_ones]
-train_trip_examples = triplets_from_labeled_dataset(train_examples)
-train_dataloader = DataLoader(train_trip_examples, shuffle=True, batch_size=train_batch_size)
-train_loss = losses.BatchHardTripletLoss(model=model, 
-                                         distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
-                                         margin=triplet_margin)
+    model_name = 'bert-base-nli-stsb-mean-tokens'
+    num_epochs = 2
+    triplet_margin = 2.0 # default value
+    train_batch_size = 8
+    # model_save_path = "./eventsim_output/{}-ep{}-b{}-m{}.pt".format(model_name, num_epochs, train_batch_size, triplet_margin)
+    model_save_path = "../eventsim_output/esbert-{}-ep{}-b{}-m{}.pt".format(model_name, num_epochs, train_batch_size, triplet_margin)
 
 
-dev_examples = [InputExample(texts=d['text'], label=d['cluster'], guid=d['id'], entities=d['bert_entities']) for d in test_corpus.documents]
-dev_trip_examples = triplets_from_labeled_dataset(dev_examples)
-dev_dataset = SentencesDataset(dev_trip_examples, model)
-dev_dataloader = DataLoader(dev_dataset, shuffle=False, batch_size=train_batch_size)
-evaluator = TripletEvaluator.from_input_examples(dev_trip_examples)
+    # read data in pickle format
+    with open('./train_dev.pickle', 'rb') as handle:
+        train_dev_corpus = pickle.load(handle)
+
+    with open('./test.pickle', 'rb') as handle:
+        test_corpus = pickle.load(handle)
+
+    # loading models
+    model = EntitySentenceTransformer("./pretrained/")
+    model[0] = EntityTransformer("./pretrained/0_Transformer/")
+    model[0].max_seq_length = 512
+    print(model[0].auto_model.embeddings)
+    print(model[0].max_seq_length)
+    print("finished loading models")
+    print("CUDA is available", torch.cuda.is_available())
+
+
+    # data loader
+    train_ones = train_dev_corpus.documents[:]
+    train_examples = [InputExample(texts=d['text'], label=d['cluster'], guid=d['id'], entities=d['bert_entities']) for d in train_ones]
+    train_trip_examples = triplets_from_labeled_dataset(train_examples)
+    train_dataloader = DataLoader(train_trip_examples, shuffle=True, batch_size=train_batch_size)
+    train_loss = losses.BatchHardTripletLoss(model=model, 
+                                            distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
+                                            margin=triplet_margin)
+
+
+    dev_examples = [InputExample(texts=d['text'], label=d['cluster'], guid=d['id'], entities=d['bert_entities']) for d in test_corpus.documents]
+    dev_trip_examples = triplets_from_labeled_dataset(dev_examples)
+    # dev_dataset = SentencesDataset(dev_trip_examples, model)
+    dev_dataloader = DataLoader(dev_dataset, shuffle=False, batch_size=train_batch_size)
+    evaluator = TripletEvaluator.from_input_examples(dev_trip_examples)
 
 
 
-warmup_steps = math.ceil(len(train_trip_examples)*num_epochs/train_batch_size*0.1) #10% of train data for warm-up
+    warmup_steps = math.ceil(len(train_trip_examples)*num_epochs/train_batch_size*0.1) #10% of train data for warm-up
 
-# Train the model
-model.fit(train_objectives=[(train_dataloader, train_loss)],
-          evaluator=None,
-          epochs=num_epochs,
-          optimizer_class=transformers.AdamW,
-          optimizer_params={'lr': 2e-5, 'eps': 1e-06},
-          evaluation_steps=math.ceil(len(train_trip_examples)/train_batch_size),
-          warmup_steps=warmup_steps,
-          output_path=model_save_path)
+    # Train the model
+    model.fit(train_objectives=[(train_dataloader, train_loss)],
+            evaluator=None,
+            epochs=num_epochs,
+            optimizer_class=transformers.AdamW,
+            optimizer_params={'lr': 2e-5, 'eps': 1e-06},
+            evaluation_steps=math.ceil(len(train_trip_examples)/train_batch_size),
+            warmup_steps=warmup_steps,
+            output_path=model_save_path)
 
-model.evaluate(evaluator)
+    # model.evaluate(evaluator)
+
+if __name__ == "__main__":
+    main()
