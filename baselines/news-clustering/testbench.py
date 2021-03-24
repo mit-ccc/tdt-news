@@ -16,8 +16,9 @@ import clustering
 import load_corpora
 import json
 import os
+import argparse
 
-def test(lang, thr, model_path, model_path_ii, merge_model_path=None):
+def test(lang, thr, model_path, model_path_ii, merge_model_path=None, output_filename=None):
     corpus = load_corpora.load(r"dataset/dataset.test.json",
                                r"dataset/clustering.test.json", set([lang]))
     print(lang,"#docs",len(corpus.documents))
@@ -36,7 +37,7 @@ def test(lang, thr, model_path, model_path_ii, merge_model_path=None):
               " | #c= ", len(aggregator.clusters), end="")
         aggregator.PutDocument(clustering.Document(d, "???"))
 
-    with open("clustering."+lang+".out", "w") as fo:
+    with open(output_filename+lang+".out", "w") as fo:
         ci = 0
         for c in aggregator.clusters:
             for d in c.ids:
@@ -46,11 +47,23 @@ def test(lang, thr, model_path, model_path_ii, merge_model_path=None):
                 fo.write("\n")
             ci += 1
 
-test('eng', 0.0, r'models/en/4_1491902620.876421_10000.0.model',
-     r'models/en/example_2017-04-10T193850.536289.ii', r'models/en/md_3')
+# test('eng', 0.0, r'models/en/4_1491902620.876421_10000.0.model',
+#      r'models/en/example_2017-04-10T193850.536289.ii', r'models/en/md_3')
+def main():
+    parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
+    parser.add_argument("--weight_model_dir", type=str, default="models/en/4_1491902620.876421_10000.0.model", help="source dir")
+    parser.add_argument("--merge_model_dir", type=str, default="models/en/md_3", help="dest dir")
+    parser.add_argument("--output_filename", type=str, default="./svm_en_data/output/xxx", help="dest dir")
+    args = parser.parse_args()
+    
+    test('eng', 0.0, args.weight_model_dir,
+        r'./svm_en_data/svm_rank.ii', merge_model_path=args.merge_model_dir, output_filename=args.output_filename)
 
-test('spa', 8.18067, r'models/es/2_1492035151.291134_100.0.model',
-     r'models/es/example_2017-04-12T215308.030747.ii')
+    # test('spa', 8.18067, r'models/es/2_1492035151.291134_100.0.model',
+    #      r'models/es/example_2017-04-12T215308.030747.ii')
 
-test('deu', 8.1175, r'models/de/2_1499938269.299021_100.0.model',
-     r'models/de/example_2017-07-13T085725.498310.ii')
+    # test('deu', 8.1175, r'models/de/2_1499938269.299021_100.0.model',
+    #      r'models/de/example_2017-07-13T085725.498310.ii')
+
+if __name__ == "__main__":
+    main()

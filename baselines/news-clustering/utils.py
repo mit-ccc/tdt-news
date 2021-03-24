@@ -11,7 +11,7 @@
 # Adapted from Arturs Znotins script
 #
 
-from scipy.misc import comb
+from scipy.special import comb
 import numpy as np
 
 # JavaScript like dictionary: d.key <=> d[key]
