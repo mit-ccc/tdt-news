@@ -800,6 +800,7 @@ def main():
             warmup_steps=warmup_steps,
             output_path=model_save_path)
 
+    # TODO: re-write the evaluator function for TripletEvaluator since it does not take entities into account
     # model.evaluate(evaluator)
 
 if __name__ == "__main__":
