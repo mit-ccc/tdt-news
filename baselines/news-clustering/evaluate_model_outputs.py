@@ -32,7 +32,7 @@ def evaluate_clusters(test_corpus, outputname="./clustering.eng.out.ranksvm"):
     print("precision: {}; recall: {}; f-1: {}".format(precision, recall, fscore))
     return precision, recall, fscore
 
-
+# evaluate the output files under one directory
 with open('./entity-bert/test_bert.pickle', 'rb') as handle:
     test_corpus = pickle.load(handle)
 print('testing en',"#docs",len(test_corpus.documents))
