@@ -37,6 +37,6 @@ with open('./entity-bert/test_bert.pickle', 'rb') as handle:
     test_corpus = pickle.load(handle)
 print('testing en',"#docs",len(test_corpus.documents))
 
-for filename_path in glob("./svm_en_data/output/tfidf/*.out"):
+for filename_path in glob("./svm_en_data/output/tfidf_smote/*.out"):
     print(filename_path)
     evaluate_clusters(test_corpus, outputname=filename_path)

@@ -53,7 +53,7 @@ def main():
     # generate data for SVM-rank, save to train_bert_rank.dat
      ##############################
     clustersAgg = GoldenAggregator()
-    with open("./svm_en_data/train_bert_rank.dat", "w") as out:
+    with open("./svm_en_data/train_svm_rank.dat", "w") as out:
         # train_dev_corpus is sorted by time
         for i, sort_document in enumerate(train_dev_corpus.documents):
             # add each document to clusters according to their gold cluster labels
@@ -92,8 +92,8 @@ def main():
             print(i)
     
     # format training data version without bert feature
-    with open("./svm_en_data/train_bert_rank.dat") as f, \
-        open("./svm_en_data/train_bert_rank_without_bert.dat", 'w') as out:
+    with open("./svm_en_data/train_svm_rank.dat") as f, \
+        open("./svm_en_data/train_svm_rank_without_bert.dat", 'w') as out:
         for line in f:
             out.write(" ".join(line.split()[:-1]) + "\n")    
     
@@ -101,7 +101,7 @@ def main():
     # generate data for SVM-merge
     ##############################
     clustersAgg = GoldenAggregator()
-    with open("./svm_en_data/train_lib0.dat", "w") as out:
+    with open("./svm_en_data/train_svmlib0.dat", "w") as out:
         # train_dev_corpus is sorted by time
         for i, sort_document in enumerate(train_dev_corpus.documents):
             # add each document to clusters according to their gold cluster labels
@@ -154,7 +154,7 @@ def main():
             1: [], # include into a cluster
             -1: [] # create a cluster
         }
-    with open("./svm_en_data/train_lib0.dat") as f:
+    with open("./svm_en_data/train_svmlib0.dat") as f:
         for line in f:
     #         print(line)
             if line[:2] == "-1": 
@@ -165,15 +165,15 @@ def main():
     #     label2sents[-1] = random.sample(label2sents[-1], min(len(label2sents[-1]), len(label2sents[1])))
 
     # sample negative and positive examples to be the same number
-    with open("./svm_en_data/train_lib1.dat", 'w') as out:
+    with open("./svm_en_data/train_svmlib1.dat", 'w') as out:
         lines = label2sents[1] + label2sents[-1]
         random.shuffle(lines)
         for line in lines:
             out.write(line)
     
     # format training data version without bert feature
-    with open("./svm_en_data/train_lib1.dat") as f, \
-        open("./svm_en_data/train_lib1_without_bert.dat", 'w') as out:
+    with open("./svm_en_data/train_svmlib1.dat") as f, \
+        open("./svm_en_data/train_svmlib1_without_bert.dat", 'w') as out:
         for line in f:
             out.write(" ".join(line.split()[:-1]) + "\n")    
 
