@@ -41,6 +41,7 @@ def get_true_false_info(url):
     false_phrase = ''
     true_phrase = ''
     count = 1
+    country = ''
     article_true_link = ''
     
     try:
@@ -49,6 +50,7 @@ def get_true_false_info(url):
         true = page_soup.findAll("p", {"class": "entry-content__text entry-content__text--explanation"})
         article_true_link = page_soup.find("a", {"class": "button entry-content__button entry-content__button--smaller"}).get('href')
         date = str(page_soup.find("p", {"class": "entry-content__text entry-content__text--topinfo"}))[68:78]
+        country = page_soup.find("p", {"class": "entry-content__text entry-content__text--topinfo"}).getText()[13:]
     except:
         print("Error with url:", url)
     
@@ -71,7 +73,7 @@ def get_true_false_info(url):
         print('Error with true phrase')
         return []
     
-    return [false_phrase[1:], true_phrase[13:], article_true_link, date]
+    return [false_phrase[1:], true_phrase[13:], article_true_link, date, country]
 
 def get_statements(url):
     pages = get_pages(url)
@@ -103,9 +105,9 @@ def get_true_statements(true_false):
 
 def save_csv(save_dict, name):
     with open(name, 'w') as f:
-        f.write("Date; Article Link; False Statement; True Statement;\n")
+        f.write("Date; Country, Article Link; False Statement; True Statement;\n")
         for key in save_dict.keys():
-            f.write("%s; %s; %s; %s\n" % (save_dict[key][3], save_dict[key][2], save_dict[key][0], save_dict[key][1]))
+            f.write("%s; %s; %s; %s; %s\n" % (save_dict[key][3], save_dict[key][4], save_dict[key][2], save_dict[key][0], save_dict[key][1]))
 
 if __name__ == "__main__":
     home_page_url = 'https://www.poynter.org/ifcn-covid-19-misinformation/'
