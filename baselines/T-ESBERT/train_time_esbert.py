@@ -1,5 +1,5 @@
 """
-train entity-aware sentenceBERT
+train time-entity-ware sentenceBERT
 """
 import json, random, logging, os, shutil
 import math, pickle, queue
@@ -66,14 +66,35 @@ class MyBatchSampler(Sampler):
     def __len__(self):
         return len(self.idx)
 
+class Date2VecConvert(nn.Module):
+    def __init__(self, model_path="./d2v_model/d2v_98291_17.169918439404636.pth"):
+        super(Date2VecConvert, self).__init__()
+        self.model = torch.load(model_path, map_location=device).to(device)
+    
+    def forward(self, x):
+#         print("self.model", next(self.model.parameters()).is_cuda)
+#         print("x", x.shape)
+#         x = torch.Tensor(x).cuda()
+        return self.model.encode(x)
+
+
+
+def convert_str_to_date_tensor(string):
+    date_obj = datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
+    date_list = [date_obj.hour, date_obj.minute, date_obj.second,
+                 date_obj.year, date_obj.month, date_obj.day]
+    return date_list
+
 
 def custom_collate_fn(batch):
     """collate for List of InputExamples, not triplet examples"""
     texts = []
     entities = []
+    dates = []
 
     for example in batch:
         texts.append(example.texts)
+        dates.append(convert_str_to_date_tensor(example.times))
 
         entity_list = np.array(example.entities)
         entity_list = entity_list[entity_list < 512]
@@ -83,6 +104,7 @@ def custom_collate_fn(batch):
 
     tokenized = entity_transformer.tokenize(texts) # HACK: use the model's internal tokenize() function
     tokenized['entity_type_ids'] = torch.tensor(entities)
+    tokenized['dates'] = torch.tensor(dates).float()
     
     return tokenized
 
@@ -141,7 +163,8 @@ def triplets_from_labeled_dataset(input_examples):
             negative = random.choice(input_examples)
 
         triplets.append(InputExample(texts=[anchor.texts, positive.texts, negative.texts],
-                                     entities=[anchor.entities, positive.entities, negative.entities]
+                                     entities=[anchor.entities, positive.entities, negative.entities],
+                                     times=[anchor.times, positive.times, negative.times]
                                     ))
     
     return triplets
@@ -162,13 +185,35 @@ class BertPooler(nn.Module):
         return pooled_output
 
 
-class EntitySBert(nn.Module):
-    """entity-aware BERT"""
+class LayerNorm(nn.Module):
+    def __init__(self, d_model, eps=1e-12):
+        super(LayerNorm, self).__init__()
+        self.gamma = nn.Parameter(torch.ones(d_model))
+        self.beta = nn.Parameter(torch.zeros(d_model))
+        self.eps = eps
+
+    def forward(self, x):
+        mean = x.mean(-1, keepdim=True)
+        std = x.std(-1, keepdim=True)
+
+        out = (x - mean) / (std + self.eps)
+        out = self.gamma * out + self.beta
+        return out
+
+
+class TimeESBert(nn.Module):
     
-    def __init__(self, esbert_model, device="cuda"):
-        super(EntitySBert, self).__init__()
+    def __init__(self, esbert_model, time_model, fuse_method="selfatt_pool", device="cuda"):
+        super(TimeESBert, self).__init__()
         self.esbert_model = esbert_model.to(device)
+        self.time_model = time_model.to(device)
+        self.fuse_method = fuse_method
         self.pooler = BertPooler(768).to(device)
+        self.concat_linear = nn.Linear(832, 832).to(device)
+        if "att" in fuse_method:
+            self.multi_att = nn.MultiheadAttention(832, 8, 0.1).to(device)
+            self.norm_layer = LayerNorm(832).to(device)
+            self.pooler = BertPooler(832).to(device)
             
     def forward(self, features):
                 
@@ -176,10 +221,31 @@ class EntitySBert(nn.Module):
         bert_features = self.esbert_model(features)
         cls_embeddings = bert_features['cls_token_embeddings']
         token_embeddings = bert_features['token_embeddings']
-                
-        pooled_features = self.pooler(token_embeddings)
         
-        features.update({"sentence_embedding": pooled_features})
+        # fuse temporal and linguistic features
+        time_features = self.time_model(features['dates'])
+#         print("time_features", time_features.shape)
+        
+        # 1. concatenation + pool
+        if self.fuse_method == "concat_pool":
+            pooled_features = self.pooler(token_embeddings)
+            fused_features = torch.cat([pooled_features, time_features], dim=1)
+        
+        # concat + pool + linear transformation
+        elif self.fuse_method == "concat_pool_linear":
+            pooled_features = self.pooler(token_embeddings)
+            fused_features = torch.cat([pooled_features, time_features], dim=1)
+            fused_features = self.concat_linear(fused_features)
+        
+        # concat + selfatt + normalization
+        elif self.fuse_method == "selfatt_pool":
+            repeat_time_vec = time_features.unsqueeze(1).repeat(1, token_embeddings.shape[1], 1)
+            concat_time_token_emb = torch.cat([token_embeddings, repeat_time_vec], 2)
+            attn_output, attn_output_weights = self.multi_att(concat_time_token_emb, concat_time_token_emb, concat_time_token_emb)
+            norm_attn_output = self.norm_layer(attn_output + concat_time_token_emb)
+            fused_features = self.pooler(norm_attn_output)
+        
+        features.update({"sentence_embedding": fused_features})
         return features
     
 
@@ -194,10 +260,12 @@ def smart_batching_collate(batch):
         """
         texts = []
         entities = []
+        dates = []
         labels = []
 
         for example in batch:
             texts.append(example.texts)
+            dates.append(convert_str_to_date_tensor(example.times))
 
             entity_list = np.array(example.entities)
             entity_list = entity_list[entity_list < 512]
@@ -210,6 +278,7 @@ def smart_batching_collate(batch):
 
         tokenized = entity_transformer.tokenize(texts) # HACK: use the model's internal tokenize() function
         tokenized['entity_type_ids'] = torch.tensor(entities)
+        tokenized['dates'] = torch.tensor(dates).float()
         batch_to_device(tokenized, device)
         
         return [tokenized], labels
@@ -267,7 +336,7 @@ def train(loss_model, dataloader, epochs=2, train_batch_size=2, warmup_steps=100
 
         # save models at certain checkpoints
         if epoch+1 in set([2, 5, 10, 30]):
-            torch.save(esbert_model, "{}/esbert_model_ep{}.pt".format(folder_name, epoch))
+            torch.save(esbert_model, "{}/time_esbert_model_ep{}.pt".format(folder_name, epoch))
             print("saving checkpoint: epoch {}".format(epoch+1))
 
 
@@ -282,8 +351,6 @@ def main():
     parser.add_argument("--train_batch_size", type=int, default=8, help="train_batch_size")
     parser.add_argument("--margin", type=float, default=2.0, help="margin")
     parser.add_argument("--max_grad_norm", type=float, default=1.0, help="max_grad_norm")
-#     parser.add_argument("--dest_dir", type=str, default="./output/exp_time_esbert_ep2_m2/", help="dest dir")
-#     parser.add_argument('--dim', type=int, default=100, help='Number of dimensions. Default is 100.')
     args = parser.parse_args()
     
     with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/train_dev.pickle', 'rb') as handle:
@@ -296,11 +363,10 @@ def main():
     # initialize a model
     # entity_transformer = EntityTransformer("/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/pretrained/0_Transformer/")
     entity_transformer.max_seq_length = 512
-#     date2vec_model = Date2VecConvert(model_path="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/Date2Vec/d2v_model/d2v_98291_17.169918439404636.pth")
-#     print("finished loading date2vec")
+    date2vec_model = Date2VecConvert(model_path="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/Date2Vec/d2v_model/d2v_98291_17.169918439404636.pth")
+    print("finished loading date2vec")
 
-#     time_esbert = TimeESBert(entity_transformer, date2vec_model, fuse_method="selfatt_pool")
-    esbert = EntitySBert(entity_transformer)
+    time_esbert = TimeESBert(entity_transformer, date2vec_model, fuse_method="selfatt_pool")
 
     labels = [d['cluster'] for d in train_corpus.documents]
     le = preprocessing.LabelEncoder()
@@ -311,6 +377,7 @@ def main():
                                 label=d['cluster_label'],
                                 guid=d['id'], 
                                 entities=d['bert_entities'], 
+                                times=d['date']
                                 ) for d in train_corpus.documents]
 
     num_epochs = args.num_epochs
@@ -319,15 +386,14 @@ def main():
     max_grad_norm = args.max_grad_norm
 
 #     sampled_examples = random.sample(dev_examples, 30)
-
 #     train_trip_examples = triplets_from_labeled_dataset(train_examples)
     sampler = MyBatchSampler(labels)
     train_dataloader = DataLoader(train_examples, sampler=sampler, batch_size=train_batch_size)
-    loss_model = losses.BatchHardTripletLoss(model=esbert, 
+    loss_model = losses.BatchHardTripletLoss(model=time_esbert, 
                                             distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
                                             margin=margin)
     warmup_steps = math.ceil(len(train_examples)*num_epochs/train_batch_size*0.1) #10% of train data for warm-up
-    folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}".format("exp_esbert", num_epochs, margin, train_batch_size, max_grad_norm)
+    folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}".format("exp_time_esbert", num_epochs, margin, train_batch_size, max_grad_norm)
     train(loss_model, 
         train_dataloader, 
         epochs=num_epochs, 
@@ -335,11 +401,12 @@ def main():
         warmup_steps=warmup_steps, 
         max_grad_norm=max_grad_norm,
         device=device,
-        folder_name=folder_name, esbert_model=esbert)
-
-#     folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}".format("exp_esbert", num_epochs, margin, train_batch_size, max_grad_norm)
+        folder_name=folder_name, esbert_model=time_esbert)
+    
+#     folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}".format("exp_time_esbert", num_epochs, margin, train_batch_size, max_grad_norm)
 #     os.makedirs(folder_name, exist_ok=True)
-#     torch.save(esbert, "{}/esbert_model.pt".format(folder_name))
+#     torch.save(esbert, "{}/time_esbert_model.pt".format(folder_name))
+    
 
 
     # sanity checking
