@@ -48,6 +48,7 @@ class MyBatchSampler(Sampler):
 
     def __init__(self, labels):
         self.label2idx = {}
+        indices = list(range(len(labels)))
         for idx in range(len(labels)):
             label = labels[idx]
             if label in self.label2idx:
@@ -55,10 +56,13 @@ class MyBatchSampler(Sampler):
             else:
                 self.label2idx[label] = [idx]
         # sample two instances consecutively
+        sample_n = 2
         self.idx = []
         for label in labels:
-            sampled_two_instances = random.sample(self.label2idx[label], 2)
-            self.idx += sampled_two_instances
+            sampled_instances = random.sample(self.label2idx[label], sample_n)
+            self.idx += sampled_instances
+            neg_sampled_instances = random.sample(indices, sample_n)
+            self.idx += neg_sampled_instances
 
     def __iter__(self):
         return iter(self.idx)
@@ -351,6 +355,7 @@ def main():
     parser.add_argument("--train_batch_size", type=int, default=8, help="train_batch_size")
     parser.add_argument("--margin", type=float, default=2.0, help="margin")
     parser.add_argument("--max_grad_norm", type=float, default=1.0, help="max_grad_norm")
+    parser.add_argument("--max_seq_length", type=int, default=512, help="max_seq_length")
     args = parser.parse_args()
     
     with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/train_dev.pickle', 'rb') as handle:
@@ -362,11 +367,13 @@ def main():
 
     # initialize a model
     # entity_transformer = EntityTransformer("/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/pretrained/0_Transformer/")
-    entity_transformer.max_seq_length = 512
+    entity_transformer.max_seq_length = args.max_seq_length
     date2vec_model = Date2VecConvert(model_path="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/Date2Vec/d2v_model/d2v_98291_17.169918439404636.pth")
     print("finished loading date2vec")
 
     time_esbert = TimeESBert(entity_transformer, date2vec_model, fuse_method="selfatt_pool")
+    
+#     train_corpus.documents = train_corpus.documents[:100]
 
     labels = [d['cluster'] for d in train_corpus.documents]
     le = preprocessing.LabelEncoder()
@@ -393,7 +400,8 @@ def main():
                                             distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
                                             margin=margin)
     warmup_steps = math.ceil(len(train_examples)*num_epochs/train_batch_size*0.1) #10% of train data for warm-up
-    folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}".format("exp_time_esbert", num_epochs, margin, train_batch_size, max_grad_norm)
+    folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}".format("exp_time_esbert", num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length)
+    os.makedirs(folder_name, exist_ok=True)
     train(loss_model, 
         train_dataloader, 
         epochs=num_epochs, 
@@ -407,8 +415,6 @@ def main():
 #     os.makedirs(folder_name, exist_ok=True)
 #     torch.save(esbert, "{}/time_esbert_model.pt".format(folder_name))
     
-
-
     # sanity checking
     # dev_dataloader = DataLoader(dev_examples, shuffle=False, batch_size=2)
 
