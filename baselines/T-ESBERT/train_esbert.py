@@ -1,5 +1,5 @@
 """
-train entity-aware sentenceBERT
+train the entity-aware sentenceBERT (https://arxiv.org/abs/2101.11059)
 """
 import json, random, logging, os, shutil
 import math, pickle, queue

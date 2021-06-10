@@ -1,5 +1,5 @@
 """
-train entity-aware sentenceBERT
+train the original sentenceBERT (https://github.com/UKPLab/sentence-transformers)
 """
 import json, random, logging, os, shutil
 import math, pickle, queue

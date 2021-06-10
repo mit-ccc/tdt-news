@@ -1,5 +1,5 @@
 """
-train time-entity-ware sentenceBERT
+train time-entity sentenceBERT (our model)
 """
 import json, random, logging, os, shutil
 import math, pickle, queue
