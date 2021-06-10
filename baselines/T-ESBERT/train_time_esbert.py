@@ -340,7 +340,7 @@ def train(loss_model, dataloader, epochs=2, train_batch_size=2, warmup_steps=100
 
         # save models at certain checkpoints
         if epoch+1 in set([2, 5, 10, 30]):
-            torch.save(esbert_model, "{}/time_esbert_model_ep{}.pt".format(folder_name, epoch))
+            torch.save(esbert_model, "{}/time_esbert_model_ep{}.pt".format(folder_name, epoch+1))
             print("saving checkpoint: epoch {}".format(epoch+1))
 
 
