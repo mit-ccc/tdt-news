@@ -1,5 +1,6 @@
 from train_sbert import *
 from sentence_transformers.evaluation import TripletEvaluator
+import re
 
 class InputExample:
     """
@@ -91,6 +92,8 @@ def main():
     test_evaluator = TripletEvaluator.from_input_examples(test_triplets, name='eventsim-test')
     
     model = SentenceTransformer(args.model_path)
+    max_seq_length = int(re.search(r"max\_seq\_(\d*)", args.model_path).group(1))
+    model.max_seq_length = max_seq_length
 
     acc = model.evaluate(test_evaluator)
 

@@ -56,13 +56,17 @@ class MyBatchSampler(Sampler):
             else:
                 self.label2idx[label] = [idx]
         # sample two instances consecutively
-        sample_n = 2
+        sample_n = 8
         self.idx = []
         for label in labels:
-            sampled_instances = random.sample(self.label2idx[label], sample_n)
+            if len(self.label2idx[label]) >= sample_n:
+                sampled_instances = random.sample(self.label2idx[label], sample_n)
+            else:
+                tmp = self.label2idx[label]*10 # make it longer
+                sampled_instances = tmp[:sample_n]
             self.idx += sampled_instances
-            neg_sampled_instances = random.sample(indices, sample_n)
-            self.idx += neg_sampled_instances
+            # neg_sampled_instances = random.sample(indices, sample_n)
+            # self.idx += neg_sampled_instances
 
     def __iter__(self):
         return iter(self.idx)
@@ -207,7 +211,7 @@ class LayerNorm(nn.Module):
 
 class TimeESBert(nn.Module):
     
-    def __init__(self, esbert_model, time_model, fuse_method="selfatt_pool", device="cuda"):
+    def __init__(self, esbert_model, time_model, fuse_method="selfatt_pool", device="cuda", freeze_time_module=False):
         super(TimeESBert, self).__init__()
         self.esbert_model = esbert_model.to(device)
         self.time_model = time_model.to(device)
@@ -218,6 +222,9 @@ class TimeESBert(nn.Module):
             self.multi_att = nn.MultiheadAttention(832, 8, 0.1).to(device)
             self.norm_layer = LayerNorm(832).to(device)
             self.pooler = BertPooler(832).to(device)
+        if freeze_time_module:
+            for param in time_model.parameters():
+                param.requires_grad = False 
             
     def forward(self, features):
                 
@@ -339,9 +346,9 @@ def train(loss_model, dataloader, epochs=2, train_batch_size=2, warmup_steps=100
         print("Avg loss is {} on training data".format(total_loss / (epoch+1)))
 
         # save models at certain checkpoints
-        if epoch+1 in set([2, 5, 10, 30]):
-            torch.save(esbert_model, "{}/time_esbert_model_ep{}.pt".format(folder_name, epoch+1))
-            print("saving checkpoint: epoch {}".format(epoch+1))
+        # if epoch+1 in set([2, 5, 10, 30]):
+        torch.save(esbert_model, "{}/time_esbert_model_ep{}.pt".format(folder_name, epochs))
+        print("saving checkpoint: epoch {}".format(epochs))
 
 
 # global variable
@@ -352,10 +359,14 @@ def main():
 
     parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
     parser.add_argument("--num_epochs", type=int, default=2, help="num_epochs")
-    parser.add_argument("--train_batch_size", type=int, default=8, help="train_batch_size")
+    parser.add_argument("--train_batch_size", type=int, default=64, help="train_batch_size")
     parser.add_argument("--margin", type=float, default=2.0, help="margin")
     parser.add_argument("--max_grad_norm", type=float, default=1.0, help="max_grad_norm")
     parser.add_argument("--max_seq_length", type=int, default=512, help="max_seq_length")
+    parser.add_argument("--fuse_method", type=str, default="selfatt_pool", help="dest dir")
+    parser.add_argument("--sample_method", type=str, default="random", help="dest dir")
+    parser.add_argument("--loss_function", type=str, default="BatchHardTripletLoss", help="dest dir")
+    parser.add_argument("--freeze_time_module", type=int, default=0, help="max_seq_length")
     args = parser.parse_args()
     
     with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/train_dev.pickle', 'rb') as handle:
@@ -371,7 +382,7 @@ def main():
     date2vec_model = Date2VecConvert(model_path="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/Date2Vec/d2v_model/d2v_98291_17.169918439404636.pth")
     print("finished loading date2vec")
 
-    time_esbert = TimeESBert(entity_transformer, date2vec_model, fuse_method="selfatt_pool")
+    time_esbert = TimeESBert(entity_transformer, date2vec_model, fuse_method=args.fuse_method, freeze_time_module=args.freeze_time_module)
     
 #     train_corpus.documents = train_corpus.documents[:100]
 
@@ -394,13 +405,35 @@ def main():
 
 #     sampled_examples = random.sample(dev_examples, 30)
 #     train_trip_examples = triplets_from_labeled_dataset(train_examples)
-    sampler = MyBatchSampler(labels)
-    train_dataloader = DataLoader(train_examples, sampler=sampler, batch_size=train_batch_size)
-    loss_model = losses.BatchHardTripletLoss(model=time_esbert, 
-                                            distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
-                                            margin=margin)
+    
+    # sampling
+    if args.sample_method == "random":
+        train_dataloader = DataLoader(train_examples, shuffle=True, batch_size=train_batch_size)
+    elif args.sample_method == "regular": # sample 8 instances of the same class each time
+        sampler = MyBatchSampler(labels)
+        train_dataloader = DataLoader(train_examples, sampler=sampler, batch_size=train_batch_size)
+    
+    # loss function
+    if args.loss_function == "BatchHardTripletLoss":
+        loss_model = losses.BatchHardTripletLoss(model=time_esbert, 
+                                                distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
+                                                margin=margin)
+    elif args.loss_function == "BatchHardSoftMarginTripletLoss":
+        loss_model = losses.BatchHardSoftMarginTripletLoss(model=time_esbert, 
+                                                distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance)
+    elif args.loss_function == "BatchSemiHardTripletLoss":
+        loss_model = losses.BatchSemiHardTripletLoss(model=time_esbert, 
+                                                distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
+                                                margin=margin)
+    elif args.loss_function == "BatchAllTripletLoss":
+        loss_model = losses.BatchAllTripletLoss(model=time_esbert, 
+                                                distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
+                                                margin=margin)
     warmup_steps = math.ceil(len(train_examples)*num_epochs/train_batch_size*0.1) #10% of train data for warm-up
-    folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}".format("exp_time_esbert", num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length)
+    if args.freeze_time_module:
+        folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}_time_frozen".format("exp_time_esbert", num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
+    else:
+        folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}".format("exp_time_esbert", num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
     os.makedirs(folder_name, exist_ok=True)
     train(loss_model, 
         train_dataloader, 

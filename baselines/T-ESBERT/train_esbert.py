@@ -72,24 +72,24 @@ class MyBatchSampler(Sampler):
         return len(self.idx)
 
 
-# def custom_collate_fn(batch):
-    # """collate for List of InputExamples, not triplet examples"""
-    # texts = []
-    # entities = []
+def custom_collate_fn(batch):
+    """collate for List of InputExamples, not triplet examples"""
+    texts = []
+    entities = []
 
-    # for example in batch:
-    #     texts.append(example.texts)
+    for example in batch:
+        texts.append(example.texts)
 
-    #     entity_list = np.array(example.entities)
-    #     entity_list = entity_list[entity_list < 512]
-    #     new_entity_list = np.zeros(512, dtype=int)
-    #     new_entity_list[entity_list] = 1
-    #     entities.append(new_entity_list)
+        entity_list = np.array(example.entities)
+        entity_list = entity_list[entity_list < 512]
+        new_entity_list = np.zeros(512, dtype=int)
+        new_entity_list[entity_list] = 1
+        entities.append(new_entity_list)
 
-    # tokenized = entity_transformer.tokenize(texts) # HACK: use the model's internal tokenize() function
-    # tokenized['entity_type_ids'] = torch.tensor(entities)
+    tokenized = entity_transformer.tokenize(texts) # HACK: use the model's internal tokenize() function
+    tokenized['entity_type_ids'] = torch.tensor(entities)
     
-    # return tokenized
+    return tokenized
 
 
 class InputExample:
@@ -271,9 +271,9 @@ def train(loss_model, dataloader, epochs=2, train_batch_size=2, warmup_steps=100
         print("Avg loss is {} on training data".format(total_loss / (epoch+1)))
 
         # save models at certain checkpoints
-        if epoch+1 in set([2, 5, 10, 30]):
-            torch.save(esbert_model, "{}/esbert_model_ep{}.pt".format(folder_name, epoch+1))
-            print("saving checkpoint: epoch {}".format(epoch+1))
+        # if epoch+1 in set([2, 5, 10, 30]):
+        torch.save(esbert_model, "{}/esbert_model_ep{}.pt".format(folder_name, epochs))
+        print("saving checkpoint: epoch {}".format(epochs))
 
 
 # global variable
@@ -284,7 +284,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
     parser.add_argument("--num_epochs", type=int, default=2, help="num_epochs")
-    parser.add_argument("--train_batch_size", type=int, default=8, help="train_batch_size")
+    parser.add_argument("--train_batch_size", type=int, default=64, help="train_batch_size")
     parser.add_argument("--margin", type=float, default=2.0, help="margin")
     parser.add_argument("--max_grad_norm", type=float, default=1.0, help="max_grad_norm")
     parser.add_argument("--max_seq_length", type=int, default=512, help="max_seq_length")
@@ -330,8 +330,9 @@ def main():
 #     sampled_examples = random.sample(dev_examples, 30)
 
 #     train_trip_examples = triplets_from_labeled_dataset(train_examples)
-    sampler = MyBatchSampler(labels)
-    train_dataloader = DataLoader(train_examples, sampler=sampler, batch_size=train_batch_size)
+    # sampler = MyBatchSampler(labels)
+    # train_dataloader = DataLoader(train_examples, sampler=sampler, batch_size=train_batch_size)
+    train_dataloader = DataLoader(train_examples, shuffle=True, batch_size=train_batch_size)
     loss_model = losses.BatchHardTripletLoss(model=esbert, 
                                             distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
                                             margin=margin)

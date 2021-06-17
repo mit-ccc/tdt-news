@@ -42,6 +42,8 @@ from sentence_transformers.evaluation import TripletEvaluator
 from sklearn import preprocessing
 from torch.utils.data.sampler import Sampler
 
+
+
 class SentenceTransformer(nn.Sequential):
     """
     Loads or create a SentenceTransformer model, that can be used to map sentences / text to embeddings.
@@ -756,7 +758,7 @@ class InputExample:
         self.times = times
 
     def __str__(self):
-        return "<InputExample> label: {}, texts: {}".format(str(self.label), "; ".join(self.texts[:10]))
+        return "<InputExample> label: {}, texts: {}".format(str(self.label), "; ".join(self.texts[0][:10]))
 
 
 
@@ -768,7 +770,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
     parser.add_argument("--num_epochs", type=int, default=2, help="num_epochs")
-    parser.add_argument("--train_batch_size", type=int, default=8, help="train_batch_size")
+    parser.add_argument("--train_batch_size", type=int, default=64, help="train_batch_size")
     parser.add_argument("--margin", type=float, default=2.0, help="margin")
     parser.add_argument("--max_grad_norm", type=float, default=1.0, help="max_grad_norm")
     parser.add_argument("--max_seq_length", type=int, default=512, help="max_seq_length")
