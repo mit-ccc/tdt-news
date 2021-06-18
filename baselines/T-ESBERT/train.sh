@@ -1,3 +1,8 @@
+# We train BERT in 4 settings (sBERT, E-sBERT, T-E-sBERT, T-E-sBERT with frozen Date2vec module)
+# 1. train SBERT models (saved in `output/exp_{name}}/`)
+# 2. evaluate the models on the EventSim Task
+
+
 #### sbert
 for epochnum in 1 2 3 4 5 6 7 8 9 10
 do

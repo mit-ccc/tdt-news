@@ -820,8 +820,9 @@ def main():
     max_grad_norm = args.max_grad_norm
 
 #     train_trip_examples = triplets_from_labeled_dataset(train_examples)
-    sampler = MyBatchSampler(labels)
-    train_dataloader = DataLoader(train_examples, sampler=sampler, batch_size=train_batch_size)
+    # sampler = MyBatchSampler(labels)
+    # train_dataloader = DataLoader(train_examples, sampler=sampler, batch_size=train_batch_size)
+    train_dataloader = DataLoader(train_examples, shuffle=True, batch_size=train_batch_size)
     loss_model = losses.BatchHardTripletLoss(model=model, 
                                             distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
                                             margin=margin)

@@ -70,15 +70,15 @@ def main():
     with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/train_dev.pickle', 'rb') as handle:
         train_dev_corpus = pickle.load(handle)
     print("finished loading train pickle files")
-    # train_examples = [InputExample(texts=d['text'], 
-    #                         label=d['cluster'],
-    #                         guid=d['id'], 
-    #                         entities=d['bert_entities'], 
-    #                         times=d['date']) for d in train_dev_corpus.documents]
-    # train_dataloader = DataLoader(train_examples, shuffle=False, batch_size=32)
-    # train_features = extract_features(train_dataloader, model)
-    # torch.save(train_features, os.path.join(input_folder, "train_sent_embeds.pt"))
-    # print("finished saving train features")
+    train_examples = [InputExample(texts=d['text'], 
+                            label=d['cluster'],
+                            guid=d['id'], 
+                            entities=d['bert_entities'], 
+                            times=d['date']) for d in train_dev_corpus.documents]
+    train_dataloader = DataLoader(train_examples, shuffle=False, batch_size=32)
+    train_features = extract_features(train_dataloader, model)
+    torch.save(train_features, os.path.join(input_folder, "train_sent_embeds.pt"))
+    print("finished saving train features")
     train_dense_feats = torch.load(os.path.join(input_folder, "train_sent_embeds.pt"))
     print('train_dense_feats', train_dense_feats.shape)
     train_dev_corpus = add_bert_features(train_dev_corpus, train_dense_feats)
@@ -90,20 +90,20 @@ def main():
     with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test.pickle', 'rb') as handle:
         test_corpus = pickle.load(handle)
     print("finished loading test pickle files")
-    # dev_examples = [InputExample(texts=d['text'], 
-    #                             label=d['cluster'],
-    #                             guid=d['id'], 
-    #                             entities=d['bert_entities'], 
-    #                             times=d['date']) for d in test_corpus.documents]
-    # dev_dataloader = DataLoader(dev_examples, shuffle=False, batch_size=32)
-    # sents_embeds = extract_features(dev_dataloader, model)
-    # torch.save(sents_embeds, os.path.join(input_folder, "test_sent_embeds.pt"))
-    # print("finished saving test features")
+    test_examples = [InputExample(texts=d['text'], 
+                                label=d['cluster'],
+                                guid=d['id'], 
+                                entities=d['bert_entities'], 
+                                times=d['date']) for d in test_corpus.documents]
+    test_dataloader = DataLoader(test_examples, shuffle=False, batch_size=32)
+    sents_embeds = extract_features(test_dataloader, model)
+    torch.save(sents_embeds, os.path.join(input_folder, "test_sent_embeds.pt"))
+    print("finished saving test features")
     test_dense_feats = torch.load(os.path.join(input_folder, "test_sent_embeds.pt"))
     print('test_dense_feats', test_dense_feats.shape)
-    test_dev_corpus = add_bert_features(test_corpus, test_dense_feats)
+    test_corpus = add_bert_features(test_corpus, test_dense_feats)
     with open(os.path.join(input_folder, "test_data.pickle"), 'wb') as handle:
-        pickle.dump(test_dev_corpus, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(test_corpus, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == "__main__":
