@@ -435,7 +435,7 @@ def main():
         folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}".format("exp_time_esbert", num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
     os.makedirs(folder_name, exist_ok=True)
     train(loss_model, 
-        train_dataloader, 
+        train_dataloader,
         epochs=num_epochs, 
         train_batch_size=train_batch_size, 
         warmup_steps=warmup_steps, 
