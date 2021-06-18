@@ -67,7 +67,7 @@ def main():
 
 
     # train
-    with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/train_dev.pickle', 'rb') as handle:
+    with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/train_dev.pickle', 'rb') as handle:
         train_dev_corpus = pickle.load(handle)
     print("finished loading train pickle files")
     # train_examples = [InputExample(texts=d['text'], 
@@ -87,7 +87,7 @@ def main():
 
 
     # dev
-    with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/test.pickle', 'rb') as handle:
+    with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test.pickle', 'rb') as handle:
         test_corpus = pickle.load(handle)
     print("finished loading test pickle files")
     # dev_examples = [InputExample(texts=d['text'], 
