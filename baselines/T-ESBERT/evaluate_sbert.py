@@ -80,7 +80,7 @@ def main():
     parser.add_argument("--model_path", type=str, default="./output/exp_sbert_ep2_mgn2.0_btch8_norm1.0_max_seq_512", help="model_path")
     args = parser.parse_args()
 
-    with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/test.pickle', 'rb') as handle:
+    with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test.pickle', 'rb') as handle:
         test_corpus = pickle.load(handle)
     print("finished loading test set")
 

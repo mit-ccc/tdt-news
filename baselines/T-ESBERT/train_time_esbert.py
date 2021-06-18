@@ -31,7 +31,7 @@ from esbert.transformer_entity import EntityTransformer
 # parentdir = os.path.dirname(currentdir)
 import sys
 from datetime import datetime
-sys.path.insert(0,"/mas/u/hjian42/tdt-twitter/baselines/news-clustering/")
+sys.path.insert(0,"/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/")
 import load_corpora
 import clustering
 from Model import Date2VecConvert
@@ -352,7 +352,7 @@ def train(loss_model, dataloader, epochs=2, train_batch_size=2, warmup_steps=100
 
 
 # global variable
-entity_transformer = EntityTransformer("/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/pretrained/0_Transformer/")
+entity_transformer = EntityTransformer("/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/pretrained_bert/0_Transformer/")
 
 def main():
     random.seed(123)
@@ -369,7 +369,7 @@ def main():
     parser.add_argument("--freeze_time_module", type=int, default=0, help="max_seq_length")
     args = parser.parse_args()
     
-    with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/train_dev.pickle', 'rb') as handle:
+    with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/train_dev.pickle', 'rb') as handle:
         train_corpus = pickle.load(handle)
 
 #     with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/test.pickle', 'rb') as handle:
@@ -383,7 +383,6 @@ def main():
     print("finished loading date2vec")
 
     time_esbert = TimeESBert(entity_transformer, date2vec_model, fuse_method=args.fuse_method, freeze_time_module=args.freeze_time_module)
-    
 #     train_corpus.documents = train_corpus.documents[:100]
 
     labels = [d['cluster'] for d in train_corpus.documents]

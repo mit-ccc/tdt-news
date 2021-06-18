@@ -33,7 +33,7 @@ from esbert.transformer_entity import EntityTransformer
 # parentdir = os.path.dirname(currentdir)
 import sys
 from datetime import datetime
-sys.path.insert(0,"/mas/u/hjian42/tdt-twitter/baselines/news-clustering/")
+sys.path.insert(0,"/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/")
 import load_corpora
 import clustering
 from Model import Date2VecConvert
@@ -778,7 +778,7 @@ def main():
 #     parser.add_argument('--dim', type=int, default=100, help='Number of dimensions. Default is 100.')
     args = parser.parse_args()
     
-    with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/train_dev.pickle', 'rb') as handle:
+    with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/train_dev.pickle', 'rb') as handle:
         train_corpus = pickle.load(handle)
 
 #     with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/test.pickle', 'rb') as handle:
