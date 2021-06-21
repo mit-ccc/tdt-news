@@ -38,7 +38,14 @@ def test(lang, thr, model_path, model_path_ii, merge_model_path=None, output_fil
     for i, d in enumerate(corpus.documents):
         print("\r", i, "/", len(corpus.documents),
               " | #c= ", len(aggregator.clusters), end="")
+        # early stop
+        if len(aggregator.clusters) > 1000:
+            break
         aggregator.PutDocument(clustering.Document(d, "???"))
+
+    # early stop
+    if len(aggregator.clusters) > 1000:
+        return
 
     with open(output_filename+lang+".out", "w") as fo:
         ci = 0
