@@ -5,7 +5,7 @@
 ## Getting started
 
 
-### pip install
+### install packages 
 
 - install packages `pip install -r requirements.txt`
 - install [svm_rank](https://www.cs.cornell.edu/people/tj/svm_light/svm_rank.html) in this directory
