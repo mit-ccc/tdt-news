@@ -11,7 +11,7 @@ done
 
 for epochnum in 1 2 3 4 5 6 7 8 9 10
 do
-    python evaluate_sbert.py --model_path ./output/exp_sbert_ep${epochnum}_mgn2.0_btch64_norm1.0_max_seq_128
+    python evaluate_sbert.py --use_saved_triplets --model_path ./output/exp_sbert_ep${epochnum}_mgn2.0_btch64_norm1.0_max_seq_128
 done
 
 
@@ -23,7 +23,7 @@ done
 
 for epochnum in 1 2 3 4 5 6 7 8 9 10
 do
-    python evaluate_entity_models.py --model_path ./output/exp_esbert_ep${epochnum}_mgn2.0_btch64_norm1.0_max_seq_128/esbert_model_ep${epochnum}.pt
+    python evaluate_entity_models.py --use_saved_triplets --model_path ./output/exp_esbert_ep${epochnum}_mgn2.0_btch64_norm1.0_max_seq_128/esbert_model_ep${epochnum}.pt
 done
 
 
@@ -35,7 +35,7 @@ done
 
 for epochnum in 1 2 3 4 5 6 7 8 9 10
 do
-    python evaluate_entity_models.py --model_path ./output/exp_time_esbert_ep${epochnum}_mgn2.0_btch64_norm1.0_max_seq_128_fuse_selfatt_pool_random_sample_BatchHardTripletLoss/time_esbert_model_ep${epochnum}.pt
+    python evaluate_entity_models.py --use_saved_triplets --model_path ./output/exp_time_esbert_ep${epochnum}_mgn2.0_btch64_norm1.0_max_seq_128_fuse_selfatt_pool_random_sample_BatchHardTripletLoss/time_esbert_model_ep${epochnum}.pt
 done
 
 
@@ -47,5 +47,5 @@ done
 
 for epochnum in 1 2 3 4 5 6 7 8 9 10
 do
-    python evaluate_entity_models.py --model_path ./output/exp_time_esbert_ep${epochnum}_mgn2.0_btch64_norm1.0_max_seq_128_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_frozen/time_esbert_model_ep${epochnum}.pt
+    python evaluate_entity_models.py --use_saved_triplets --model_path ./output/exp_time_esbert_ep${epochnum}_mgn2.0_btch64_norm1.0_max_seq_128_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_frozen/time_esbert_model_ep${epochnum}.pt
 done

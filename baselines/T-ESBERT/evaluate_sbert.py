@@ -55,7 +55,9 @@ def triplets_from_labeled_dataset(input_examples):
         while negative is None or negative.label == anchor.label:
             negative = random.choice(input_examples)
 
-        triplets.append(InputExample(texts=[anchor.texts[0], positive.texts[0], negative.texts[0]]))
+        triplets.append(InputExample(texts=[anchor.texts[0], positive.texts[0], negative.texts[0]],
+                                     entities=[anchor.entities, positive.entities, negative.entities],
+                                     times=[anchor.times, positive.times, negative.times]))
 
     return triplets
 
@@ -78,16 +80,22 @@ def main():
 
     parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
     parser.add_argument("--model_path", type=str, default="./output/exp_sbert_ep2_mgn2.0_btch8_norm1.0_max_seq_512", help="model_path")
+    parser.add_argument("--use_saved_triplets", dest='use_saved_triplets', action='store_true') # default is false
     args = parser.parse_args()
 
-    with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test.pickle', 'rb') as handle:
-        test_corpus = pickle.load(handle)
-    print("finished loading test set")
+    if args.use_saved_triplets:
+        print("using pre-extracted triplets...")
+        with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test_eventsim_triplets.pickle', 'rb') as handle:
+            test_triplets = pickle.load(handle)
+    else:
+        with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test.pickle', 'rb') as handle:
+            test_corpus = pickle.load(handle)
+        print("finished loading test set")
 
-    random.seed(42)
-    test_corpus.documents = test_corpus.documents[:]
-    test_examples, test_labels = get_examples_labels(test_corpus)
-    test_triplets = triplets_from_labeled_dataset(test_examples)
+        random.seed(42)
+        test_corpus.documents = test_corpus.documents[:]
+        test_examples, test_labels = get_examples_labels(test_corpus)
+        test_triplets = triplets_from_labeled_dataset(test_examples)
 
     test_evaluator = TripletEvaluator.from_input_examples(test_triplets, name='eventsim-test')
     

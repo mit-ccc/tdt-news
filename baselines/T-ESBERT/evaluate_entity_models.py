@@ -4,7 +4,7 @@ from sklearn.metrics.pairwise import paired_cosine_distances, paired_euclidean_d
 
 parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
 parser.add_argument("--model_path", type=str, default="./output/exp_time_esbert_ep2_mgn2.0_btch8_norm1.0_max_seq_128/time_esbert_model_ep1.pt", help="model_path")
-# parser.add_argument("--model_type", type=str, default="tesbert", help="model_path")
+parser.add_argument("--use_saved_triplets", dest='use_saved_triplets', action='store_true') # default is false
 args = parser.parse_args()
 
 model_type = 'tesbert' if 'time' in args.model_path else 'esbert'
@@ -116,14 +116,19 @@ def evaluate_model(model, test_dataloader):
 
 def main():
 
-    with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test.pickle', 'rb') as handle:
-        test_corpus = pickle.load(handle)
-    print("finished loading test set")
+    if args.use_saved_triplets:
+        print("using pre-extracted triplets...")
+        with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test_eventsim_triplets.pickle', 'rb') as handle:
+            test_triplets = pickle.load(handle)
+    else:
+        with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test.pickle', 'rb') as handle:
+            test_corpus = pickle.load(handle)
+        print("finished loading test set")
 
-    random.seed(42)
-    test_corpus.documents = test_corpus.documents[:]
-    test_examples, test_labels = get_examples_labels(test_corpus)
-    test_triplets = triplets_from_labeled_dataset(test_examples)
+        random.seed(42)
+        test_corpus.documents = test_corpus.documents[:]
+        test_examples, test_labels = get_examples_labels(test_corpus)
+        test_triplets = triplets_from_labeled_dataset(test_examples)
     test_dataloader = DataLoader(test_triplets, shuffle=False, batch_size=8)
 
     max_seq_length = int(re.search(r"max\_seq\_(\d*)", args.model_path).group(1))
