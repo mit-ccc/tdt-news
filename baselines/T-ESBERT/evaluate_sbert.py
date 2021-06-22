@@ -1,5 +1,5 @@
 from train_sbert import *
-from sentence_transformers.evaluation import TripletEvaluator
+from sentence_transformers.evaluation import TripletEvaluator, SimilarityFunction
 import re
 
 class InputExample:
@@ -97,7 +97,7 @@ def main():
         test_examples, test_labels = get_examples_labels(test_corpus)
         test_triplets = triplets_from_labeled_dataset(test_examples)
 
-    test_evaluator = TripletEvaluator.from_input_examples(test_triplets, name='eventsim-test')
+    test_evaluator = TripletEvaluator.from_input_examples(test_triplets, name='eventsim-test', main_distance_function=SimilarityFunction.COSINE)
     
     model = SentenceTransformer(args.model_path)
     max_seq_length = int(re.search(r"max\_seq\_(\d*)", args.model_path).group(1))
