@@ -37,11 +37,15 @@ cd /mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/
 export CUDA_VISIBLE_DEVICES=5
 ```
 
-## Finetune BERT embeddings
+## Finetune BERT embeddings (online sampling)
 
 1. run `sh train.sh` to finetune BERT embeddings in 4 settings:
     - finetune BERT models (sBERT, E-sBERT, T-E-sBERT, T-E-sBERT with frozen Date2vec module)
     - evaluate BERT on the EventSim Task
+
+2. run `sh train_offline.sh`
+    - TODO: fix the bug for sBERT (training time too long)
+    - TODO: make sBERT and T-E-sBERT share the same evaluation code
 
 ## Tune the TDT pipeline with the BERT embeddings:
 
@@ -53,5 +57,4 @@ export CUDA_VISIBLE_DEVICES=5
 
 ## Future Plans
 
-- experiment with offline sampling
 - experiment with feature selection (TFIDF, TIME, BERT)

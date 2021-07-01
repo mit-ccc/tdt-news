@@ -15,7 +15,8 @@ def extract_triplets(train_dev_distance_mat, class2idx, idx2class):
     HPHN_triplets = []
     HPEN_triplets = []
 
-    threshold = np.percentile(train_dev_distance_mat, 99) # statistical test
+    # threshold = np.percentile(train_dev_distance_mat, 99) # statistical test, this is not the right implementation
+    threshold = np.percentile(train_dev_distance_mat, 99, axis=1).reshape(train_dev_distance_mat.shape[0], 1) # according to the paper, we will calculate outliers for each instance
 
     # cosine disance in the range: [0, 2]
     for idx, embed in enumerate(train_dev_distance_mat):
@@ -29,9 +30,13 @@ def extract_triplets(train_dev_distance_mat, class2idx, idx2class):
         positive_idx_list = list(class2idx[cluster])
         mask_pos = np.zeros(embed.shape,dtype=bool)
         mask_pos[positive_idx_list] = True
-        mask_not_outlier = (embed < threshold)
+        mask_not_outlier = (embed < threshold[idx])
         negative_idx_list = list((mask_not_outlier * (~mask_pos)).nonzero())[0]
-        # print(negative_idx_list)
+        # print("embed", embed)
+        # print("threshold", threshold[idx])
+        # print("mask_pos", mask_pos)
+        # print("mask_not_outlier", mask_not_outlier)
+        # print("negative_idx_list", negative_idx_list)
         
         sorted_pos_idx_list = np.argsort(embed[positive_idx_list], axis=0)
         sorted_neg_idx_list = np.argsort(embed[negative_idx_list], axis=0)
@@ -63,6 +68,7 @@ def main():
 
     train_dense_feats = torch.load(os.path.join(args.input_folder, "train_sent_embeds.pt"))
     train_dev_distance_mat = 1 - cosine_similarity(train_dense_feats, train_dense_feats)
+    # train_dev_distance_mat = train_dev_distance_mat[:10]
 
     # class2idx and idx2class
     class2idx = {}

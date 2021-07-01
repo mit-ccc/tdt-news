@@ -87,6 +87,15 @@ def main():
         save_model(model_in, m)
         print("saving model {}".format(model_out))
         convert_model_format(model_in, model_out)
+    
+    y, x = y_samp, X_samp
+    for c in [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 10, 100]:
+        m = train(y, x, '-c {} -B 1.0'.format(c))
+        model_in = os.path.join(args.input_folder, "models", 'liblinearSVM_tfidf_bert_smote_c{}_b1.model'.format(c))
+        model_out = os.path.join(args.input_folder, "models", 'merge_model_tfidf_bert_smote_c{}_b1.md'.format(c))
+        save_model(model_in, m)
+        print("saving model {}".format(model_out))
+        convert_model_format(model_in, model_out)
 
 if __name__ == "__main__":
     main()

@@ -178,6 +178,97 @@ def triplets_from_labeled_dataset(input_examples):
     return triplets
 
 
+def triplets_from_offline_sampling(input_examples, offline_triplet_idxes, mode="EPHN_triplets"):
+    """
+    use pre-determined triplets from offline sampling algorithms including EPHN, EPEN, HPHN, HPEN
+    """
+    triplets = []
+
+    for (anchor_idx, pos_idx, neg_idx) in offline_triplet_idxes[mode]:
+        anchor = input_examples[anchor_idx]
+
+        positive = input_examples[pos_idx]
+
+        negative = input_examples[neg_idx]
+        
+        triplets.append([anchor, positive, negative])
+    
+    return triplets
+
+
+def triplet_batching_collate(batch):
+        """
+        Transforms a batch from a SmartBatchingDataset to a batch of tensors for the model
+        Here, batch is a list of tuples: [(tokens, label), ...]
+        :param batch:
+            a batch from a SmartBatchingDataset
+        :return:
+            a batch of tensors for the model
+        """
+        
+        tokenized_dict = {}
+        labels_dict = {}
+        for idx in range(3):
+            texts = []
+            entities = []
+            dates = []
+            labels = []
+
+            for triplet in batch:
+                example = triplet[idx]
+                texts.append(example.texts)
+                dates.append(convert_str_to_date_tensor(example.times))
+
+                entity_list = np.array(example.entities)
+                entity_list = entity_list[entity_list < 512]
+                new_entity_list = np.zeros(512, dtype=int)
+                new_entity_list[entity_list] = 1
+                entities.append(new_entity_list)
+
+                labels.append(example.label)
+
+            tokenized = entity_transformer.tokenize(texts) # HACK: use the model's internal tokenize() function
+#             print(tokenized)
+            tokenized['entity_type_ids'] = torch.tensor(entities)
+            tokenized['dates'] = torch.tensor(dates).float()
+        
+            tokenized_dict[idx] = tokenized
+            labels_dict[idx] = labels
+        batch_to_device(tokenized_dict, device)
+        batch_to_device(labels_dict, device)
+
+        return tokenized_dict, labels_dict
+
+
+def cosine_distance(embeddings1, embeddings2):
+    """
+    Compute the 2D matrix of cosine distances (1-cosine_similarity) between all embeddings.
+    """
+    return 1 - nn.CosineSimilarity(dim=1, eps=1e-6)(embeddings1, embeddings2)
+
+
+class BatchOfflineTripletLoss(nn.Module):
+    
+    def __init__(self, model: SentenceTransformer, distance_metric = cosine_distance, margin: float = 5):
+        super(BatchOfflineTripletLoss, self).__init__()
+        self.sentence_embedder = model
+        self.triplet_margin = margin
+        self.distance_metric = distance_metric
+    
+    def forward(self, sentence_features: Iterable[Dict[str, Tensor]], labels: Tensor):
+        anchor_embed = self.sentence_embedder(sentence_features[0])['sentence_embedding']
+        pos_embed = self.sentence_embedder(sentence_features[1])['sentence_embedding']
+        neg_embed = self.sentence_embedder(sentence_features[2])['sentence_embedding']
+        
+        anchor_pos_distance = self.distance_metric(anchor_embed, pos_embed)
+        anchor_neg_distance = self.distance_metric(anchor_embed, neg_embed)
+
+        tl = anchor_pos_distance - anchor_neg_distance + self.triplet_margin
+        tl[tl < 0] = 0
+        triplet_loss = tl.mean()
+        return triplet_loss
+
+
 class BertPooler(nn.Module):
     def __init__(self, hidden_size):
         super().__init__()
@@ -300,7 +391,6 @@ def train(loss_model, dataloader, epochs=2, train_batch_size=2, warmup_steps=100
     global_step = 0
     total_loss = 0
     
-    dataloader.collate_fn = smart_batching_collate
     steps_per_epoch = len(dataloader)
     num_training_steps = int(steps_per_epoch * epochs)
     data_iterator = iter(dataloader)
@@ -367,6 +457,7 @@ def main():
     parser.add_argument("--sample_method", type=str, default="random", help="dest dir")
     parser.add_argument("--loss_function", type=str, default="BatchHardTripletLoss", help="dest dir")
     parser.add_argument("--freeze_time_module", type=int, default=0, help="max_seq_length")
+    parser.add_argument("--offline_triplet_data_path", type=str, default="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/output/exp_time_esbert_ep3_mgn2.0_btch64_norm1.0_max_seq_128_fuse_selfatt_pool_random_sample_BatchHardTripletLoss/train_dev_offline_triplets.pickle", help="dest dir")
     args = parser.parse_args()
     
     with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/train_dev.pickle', 'rb') as handle:
@@ -408,9 +499,18 @@ def main():
     # sampling
     if args.sample_method == "random":
         train_dataloader = DataLoader(train_examples, shuffle=True, batch_size=train_batch_size)
+        train_dataloader.collate_fn = smart_batching_collate
     elif args.sample_method == "regular": # sample 8 instances of the same class each time
         sampler = MyBatchSampler(labels)
         train_dataloader = DataLoader(train_examples, sampler=sampler, batch_size=train_batch_size)
+        train_dataloader.collate_fn = smart_batching_collate
+    elif args.sample_method in set(['EPHN_triplets', 'EPEN_triplets', 'HPHN_triplets', 'HPEN_triplets']):
+        args.loss_function = "offline"
+        with open(args.offline_triplet_data_path, 'rb') as handle:
+            train_offline_triplets_idxes = pickle.load(handle)
+        train_dev_triplets = triplets_from_offline_sampling(train_examples, train_offline_triplets_idxes, mode=args.sample_method)
+        train_dataloader = DataLoader(train_dev_triplets, shuffle=True, batch_size=train_batch_size) ## TODO: shuffle to True
+        train_dataloader.collate_fn = triplet_batching_collate
     
     # loss function
     if args.loss_function == "BatchHardTripletLoss":
@@ -428,6 +528,9 @@ def main():
         loss_model = losses.BatchAllTripletLoss(model=time_esbert, 
                                                 distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
                                                 margin=margin)
+    elif args.loss_function == "offline":
+        loss_model = BatchOfflineTripletLoss(time_esbert, distance_metric=cosine_distance, margin=margin)
+
     warmup_steps = math.ceil(len(train_examples)*num_epochs/train_batch_size*0.1) #10% of train data for warm-up
     if args.freeze_time_module:
         folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}_time_frozen".format("exp_time_esbert", num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
