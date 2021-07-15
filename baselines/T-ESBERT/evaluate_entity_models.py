@@ -7,11 +7,20 @@ parser.add_argument("--model_path", type=str, default="./output/exp_time_esbert_
 parser.add_argument("--use_saved_triplets", dest='use_saved_triplets', action='store_true') # default is false
 args = parser.parse_args()
 
-model_type = 'tesbert' if 'time' in args.model_path else 'esbert'
-if model_type == 'tesbert':
+if "exp_time_esbert" in args.model_path:
+    model_type = 'tesbert'
     from train_time_esbert import *
-elif model_type == "esbert":
+elif "exp_pos2vec_esbert" in args.model_path:
+    model_type = 'pos2vec_esbert'
+    from train_pos2vec_esbert import *
+elif "exp_esbert" in args.model_path:
+    model_type = 'esbert'
     from train_esbert import *
+
+
+# torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.benchmark = False
+
 
 def get_examples_labels(selected_corpus):
     labels = [d['cluster'] for d in selected_corpus.documents]
@@ -19,7 +28,7 @@ def get_examples_labels(selected_corpus):
     targets = le.fit_transform(labels)
     for d, target in zip(selected_corpus.documents, targets):
         d['cluster_label'] = target
-    examples = [InputExample( texts=d['text'], # just need to add [] for the default sentenceBERT training pipeline
+    examples = [InputExample( texts=d['full_text'], # just need to add [] for the default sentenceBERT training pipeline
                                     label=d['cluster_label'],
                                     guid=d['id'], 
                                     entities=d['bert_entities'], 
@@ -73,15 +82,19 @@ def custom_collate_fn_triplets(batch):
             texts_list[idx].append(example.texts[idx]) # example.texts is a list strings with length 3: [text1, text2, text3]
             if model_type == "tesbert":
                 dates_list[idx].append(convert_str_to_date_tensor(example.times[idx]))
+            elif model_type == "pos2vec_esbert":
+                dates_list[idx].append(compute_time_stamp(example.times[idx]))
             
             entities_np = np.array(example.entities[idx]) 
             entities_np = entities_np[entities_np < 512]
             new_entities_tensor = np.zeros(512, dtype=int)
-            new_entities_tensor[entities_np] = 1
+            if len(entities_np) > 0: # sometimes there is no entity in the document
+                new_entities_tensor[entities_np] = 1
             entities_list[idx].append(new_entities_tensor)
     
     tokenized_list = []
     for idx, (text, dates, entities) in enumerate(zip(texts_list, dates_list, entities_list)):
+        # print("SEE: ", text, dates, entities)
         tokenized = entity_transformer.tokenize(text)
         tokenized['dates'] = torch.tensor(dates).float()
         tokenized['entity_type_ids'] = torch.tensor(entities)
@@ -121,10 +134,10 @@ def main():
         with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test_eventsim_triplets.pickle', 'rb') as handle:
             test_triplets = pickle.load(handle)
     else:
+        print("using newly-generated triplets...")
         with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test.pickle', 'rb') as handle:
             test_corpus = pickle.load(handle)
-        print("finished loading test set")
-
+        
         random.seed(42)
         test_corpus.documents = test_corpus.documents[:]
         test_examples, test_labels = get_examples_labels(test_corpus)
@@ -134,8 +147,11 @@ def main():
     max_seq_length = int(re.search(r"max\_seq\_(\d*)", args.model_path).group(1))
     entity_transformer.max_seq_length = max_seq_length # entity_transformer is only for tokenization
     model = torch.load(args.model_path)
+    model.eval() # switch to evaluation mode, to ensure reproducibility during test time
 
     acc = evaluate_model(model, test_dataloader)
+    # acc = evaluate_model(model, test_dataloader)
+    # acc = evaluate_model(model, test_dataloader)
 
 
 if __name__ == "__main__":

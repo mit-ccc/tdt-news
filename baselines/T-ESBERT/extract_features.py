@@ -5,7 +5,12 @@ parser = argparse.ArgumentParser(description="main training script for word2vec 
 parser.add_argument("--model_path", type=str, default="./output/exp_time_esbert_ep2_mgn2.0_btch8_norm1.0_max_seq_128/time_esbert_model_ep1.pt", help="model_path")
 args = parser.parse_args()
 
-if "exp_time_esbert" in args.model_path:
+if "exp_pos2vec_esbert" in args.model_path:
+    model_type = 'pos2vec_esbert'
+    from train_pos2vec_esbert import *
+    model = torch.load(args.model_path)
+    input_folder = os.path.dirname(args.model_path)
+elif "exp_time_esbert" in args.model_path:
     model_type = 'tesbert' 
     from train_time_esbert import *
     model = torch.load(args.model_path)
@@ -60,6 +65,9 @@ def add_bert_features(corpus, dense_features):
 
 def main():
 
+    # turn on the evaluation mode
+    model.eval()
+
     # intialize the model
     max_seq_length = int(re.search(r"max\_seq\_(\d*)", args.model_path).group(1))
     entity_transformer.max_seq_length = max_seq_length # entity_transformer is only for tokenization
@@ -70,12 +78,12 @@ def main():
     with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/train_dev.pickle', 'rb') as handle:
         train_dev_corpus = pickle.load(handle)
     print("finished loading train pickle files")
-    train_examples = [InputExample(texts=d['text'], 
+    train_examples = [InputExample(texts=d['full_text'], 
                             label=d['cluster'],
                             guid=d['id'], 
                             entities=d['bert_entities'], 
                             times=d['date']) for d in train_dev_corpus.documents]
-    train_dataloader = DataLoader(train_examples, shuffle=False, batch_size=32)
+    train_dataloader = DataLoader(train_examples, shuffle=False, batch_size=16)
     train_features = extract_features(train_dataloader, model)
     torch.save(train_features, os.path.join(input_folder, "train_sent_embeds.pt"))
     print("finished saving train features")
@@ -90,12 +98,12 @@ def main():
     with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test.pickle', 'rb') as handle:
         test_corpus = pickle.load(handle)
     print("finished loading test pickle files")
-    test_examples = [InputExample(texts=d['text'], 
+    test_examples = [InputExample(texts=d['full_text'], 
                                 label=d['cluster'],
                                 guid=d['id'], 
                                 entities=d['bert_entities'], 
                                 times=d['date']) for d in test_corpus.documents]
-    test_dataloader = DataLoader(test_examples, shuffle=False, batch_size=32)
+    test_dataloader = DataLoader(test_examples, shuffle=False, batch_size=16)
     sents_embeds = extract_features(test_dataloader, model)
     torch.save(sents_embeds, os.path.join(input_folder, "test_sent_embeds.pt"))
     print("finished saving test features")

@@ -107,7 +107,8 @@ def custom_collate_fn(batch):
         entity_list = np.array(example.entities)
         entity_list = entity_list[entity_list < 512]
         new_entity_list = np.zeros(512, dtype=int)
-        new_entity_list[entity_list] = 1
+        if len(entity_list) > 0: # sometimes there is no entity in the document
+            new_entity_list[entity_list] = 1
         entities.append(new_entity_list)
 
     tokenized = entity_transformer.tokenize(texts) # HACK: use the model's internal tokenize() function
@@ -222,7 +223,8 @@ def triplet_batching_collate(batch):
                 entity_list = np.array(example.entities)
                 entity_list = entity_list[entity_list < 512]
                 new_entity_list = np.zeros(512, dtype=int)
-                new_entity_list[entity_list] = 1
+                if len(entity_list) > 0: # sometimes there is no entity in the document
+                    new_entity_list[entity_list] = 1
                 entities.append(new_entity_list)
 
                 labels.append(example.label)
@@ -284,6 +286,21 @@ class BertPooler(nn.Module):
         return pooled_output
 
 
+class BertMeanPooler(nn.Module):
+    def __init__(self, hidden_size):
+        super().__init__()
+        self.dense = nn.Linear(hidden_size, hidden_size)
+        self.activation = nn.Tanh()
+
+    def forward(self, hidden_states):
+        # We "pool" the model by simply taking the hidden state corresponding
+        # to the first token.
+        mean_token_tensor = torch.mean(hidden_states, 1)
+        pooled_output = self.dense(mean_token_tensor)
+        pooled_output = self.activation(pooled_output)
+        return pooled_output
+
+
 class LayerNorm(nn.Module):
     def __init__(self, d_model, eps=1e-12):
         super(LayerNorm, self).__init__()
@@ -307,12 +324,12 @@ class TimeESBert(nn.Module):
         self.esbert_model = esbert_model.to(device)
         self.time_model = time_model.to(device)
         self.fuse_method = fuse_method
-        self.pooler = BertPooler(768).to(device)
+        # self.pooler = BertPooler(768).to(device)
         self.concat_linear = nn.Linear(832, 832).to(device)
         if "att" in fuse_method:
             self.multi_att = nn.MultiheadAttention(832, 8, 0.1).to(device)
             self.norm_layer = LayerNorm(832).to(device)
-            self.pooler = BertPooler(832).to(device)
+            self.pooler = BertMeanPooler(832).to(device)
         if freeze_time_module:
             for param in time_model.parameters():
                 param.requires_grad = False 
@@ -323,6 +340,7 @@ class TimeESBert(nn.Module):
         bert_features = self.esbert_model(features)
         cls_embeddings = bert_features['cls_token_embeddings']
         token_embeddings = bert_features['token_embeddings']
+        attention_mask = bert_features['attention_mask']
         
         # fuse temporal and linguistic features
         time_features = self.time_model(features['dates'])
@@ -330,12 +348,22 @@ class TimeESBert(nn.Module):
         
         # 1. concatenation + pool
         if self.fuse_method == "concat_pool":
-            pooled_features = self.pooler(token_embeddings)
+            output_vectors = []
+            input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+            sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
+            sum_mask = input_mask_expanded.sum(1) # tokens not weighted
+            output_vectors.append(sum_embeddings / sum_mask)
+            pooled_features = torch.cat(output_vectors, 1)
             fused_features = torch.cat([pooled_features, time_features], dim=1)
         
         # concat + pool + linear transformation
         elif self.fuse_method == "concat_pool_linear":
-            pooled_features = self.pooler(token_embeddings)
+            output_vectors = []
+            input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+            sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
+            sum_mask = input_mask_expanded.sum(1) # tokens not weighted
+            output_vectors.append(sum_embeddings / sum_mask)
+            pooled_features = torch.cat(output_vectors, 1)
             fused_features = torch.cat([pooled_features, time_features], dim=1)
             fused_features = self.concat_linear(fused_features)
         
@@ -346,6 +374,12 @@ class TimeESBert(nn.Module):
             attn_output, attn_output_weights = self.multi_att(concat_time_token_emb, concat_time_token_emb, concat_time_token_emb)
             norm_attn_output = self.norm_layer(attn_output + concat_time_token_emb)
             fused_features = self.pooler(norm_attn_output)
+            # output_vectors = []
+            # input_mask_expanded = attention_mask.unsqueeze(-1).expand(norm_attn_output.size()).float()
+            # sum_embeddings = torch.sum(norm_attn_output * input_mask_expanded, 1)
+            # sum_mask = input_mask_expanded.sum(1) # tokens not weighted
+            # output_vectors.append(sum_embeddings / sum_mask)
+            # fused_features = torch.cat(output_vectors, 1)
         
         features.update({"sentence_embedding": fused_features})
         return features
@@ -372,7 +406,8 @@ def smart_batching_collate(batch):
             entity_list = np.array(example.entities)
             entity_list = entity_list[entity_list < 512]
             new_entity_list = np.zeros(512, dtype=int)
-            new_entity_list[entity_list] = 1
+            if len(entity_list) > 0: # sometimes there is no entity in the document
+                new_entity_list[entity_list] = 1
             entities.append(new_entity_list)
             
             labels.append(example.label)
@@ -436,7 +471,6 @@ def train(loss_model, dataloader, epochs=2, train_batch_size=2, warmup_steps=100
         print("Avg loss is {} on training data".format(total_loss / (epoch+1)))
 
         # save models at certain checkpoints
-        # if epoch+1 in set([2, 5, 10, 30]):
         torch.save(esbert_model, "{}/time_esbert_model_ep{}.pt".format(folder_name, epochs))
         print("saving checkpoint: epoch {}".format(epochs))
 
@@ -481,7 +515,7 @@ def main():
     targets = le.fit_transform(labels)
     for d, target in zip(train_corpus.documents, targets):
         d['cluster_label'] = target
-    train_examples = [InputExample(texts=d['text'], 
+    train_examples = [InputExample(texts=d['full_text'], 
                                 label=d['cluster_label'],
                                 guid=d['id'], 
                                 entities=d['bert_entities'], 

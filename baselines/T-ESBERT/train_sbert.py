@@ -808,7 +808,7 @@ def main():
     targets = le.fit_transform(labels)
     for d, target in zip(train_corpus.documents, targets):
         d['cluster_label'] = target
-    train_examples = [InputExample(texts=[d['text']], # just need to add [] for the default sentenceBERT training pipeline
+    train_examples = [InputExample(texts=[d['full_text']], # just need to add [] for the default sentenceBERT training pipeline
                                 label=d['cluster_label'],
                                 guid=d['id'], 
                                 # entities=d['bert_entities'], 
