@@ -89,3 +89,4 @@ do
     --min_cluster_size 7 --min_samples 3 \
     --input_folder ./output/exp_pos2vec_esbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss
 done
+
