@@ -1,3 +1,6 @@
+"""
+download pretrained bert-base-nli-stsb-mean-tokens BERT to pretrained_bert and save it in SBERT format
+"""
 from sentence_transformers import SentenceTransformer, LoggingHandler, losses, util
 import torch
 from torch import nn, Tensor, device
@@ -60,12 +63,12 @@ class EntitySBert(nn.Module):
 
 
 # save the pre-trained model
-model_name = 'bert-base-nli-stsb-mean-tokens'
-sbert_hugginface = SentenceTransformer(model_name)
-sbert_hugginface.save("pretrained_bert")
+# model_name = 'bert-base-nli-stsb-mean-tokens'
+# sbert_hugginface = SentenceTransformer(model_name)
+# sbert_hugginface.save("pretrained_bert")
 
 # also save the model in our format
-torch.save(sbert_hugginface, "./pretrained_bert/bert-base-nli-stsb-mean-tokens.pt")
+# torch.save(sbert_hugginface, "./pretrained_bert/bert-base-nli-stsb-mean-tokens.pt")
 
 sbert_hugginface = torch.load("./pretrained_bert/bert-base-nli-stsb-mean-tokens.pt")
 sbert_ours = SBERT(sbert_hugginface[0]) # sbert, without entity
