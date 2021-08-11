@@ -81,12 +81,22 @@ def main():
     parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
     parser.add_argument("--model_path", type=str, default="./output/exp_sbert_ep2_mgn2.0_btch8_norm1.0_max_seq_512", help="model_path")
     parser.add_argument("--use_saved_triplets", dest='use_saved_triplets', action='store_true') # default is false
+    parser.add_argument("--use_vaccine_saved_triplets", dest='use_vaccine_saved_triplets', action='store_true') # default is false
     args = parser.parse_args()
 
-    if args.use_saved_triplets:
+    model = SentenceTransformer(args.model_path)    
+
+    if args.use_vaccine_saved_triplets:
+        print("using pre-extracted vaccine triplets...")
+        with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/news_data/test_eventsim_triplets.pickle', 'rb') as handle:
+            test_triplets = pickle.load(handle)
+        model.max_seq_length = 128
+    elif args.use_saved_triplets:
         print("using pre-extracted triplets...")
         with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test_eventsim_triplets.pickle', 'rb') as handle:
             test_triplets = pickle.load(handle)
+        max_seq_length = int(re.search(r"max\_seq\_(\d*)", args.model_path).group(1))
+        model.max_seq_length = max_seq_length  
     else:
         with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test.pickle', 'rb') as handle:
             test_corpus = pickle.load(handle)
@@ -97,11 +107,10 @@ def main():
         test_examples, test_labels = get_examples_labels(test_corpus)
         test_triplets = triplets_from_labeled_dataset(test_examples)
 
+        max_seq_length = int(re.search(r"max\_seq\_(\d*)", args.model_path).group(1))
+        model.max_seq_length = max_seq_length  
+
     test_evaluator = TripletEvaluator.from_input_examples(test_triplets, name='eventsim-test', main_distance_function=SimilarityFunction.COSINE)
-    
-    model = SentenceTransformer(args.model_path)
-    max_seq_length = int(re.search(r"max\_seq\_(\d*)", args.model_path).group(1))
-    model.max_seq_length = max_seq_length
 
     acc = model.evaluate(test_evaluator)
 

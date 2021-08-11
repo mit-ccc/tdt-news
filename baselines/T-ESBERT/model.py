@@ -14,6 +14,7 @@ class Model:
         self.weights = {}
         self.bias = 0
 
+    # load weight model
     def load(self, model_path, ii_path):
         ii = {}
         with open(ii_path) as fii:
@@ -25,14 +26,16 @@ class Model:
             for i, line in enumerate(fm):
                 if i == 10:
                     self.bias = float(line.split('#')[0].strip())
+                    print("weight model's self.bias: ", self.bias)
                 elif i == 11:
                     for f in line.split('#')[0].split(' ')[1:]:
                         if len(f.split(':')) < 2:
                             continue
                         self.weights[ii[f.split(':')[0]]] = float(
                             f.split(':')[1])
-        print(json.dumps(self.weights))
+        print("weight model's self.weights: ", json.dumps(self.weights))
 
+    # load merge model
     def load_raw(self, model_path):
         linei = -1
         with open(model_path) as fii:

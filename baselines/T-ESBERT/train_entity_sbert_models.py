@@ -10,6 +10,7 @@ import requests
 import numpy as np
 from numpy import ndarray
 import argparse
+from datetime import datetime
 
 import transformers
 import torch
@@ -27,10 +28,7 @@ from sentence_transformers import SentenceTransformer, LoggingHandler, losses, u
 from sentence_transformers import __version__
 from esbert.transformer_entity import BertEntityEmbeddings, EntityBertModel
 from esbert.transformer_entity import EntityTransformer
-# currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-# parentdir = os.path.dirname(currentdir)
 import sys
-from datetime import datetime
 sys.path.insert(0,"/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/")
 import load_corpora
 import clustering
@@ -39,9 +37,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 from sentence_transformers.evaluation import TripletEvaluator
 from sklearn import preprocessing
 from torch.utils.data.sampler import Sampler
-from utils import CorpusClass
 
+from utils import CorpusClass, InputExample, cosine_distance
 
+######################################
+### Inference Feature Extraction #####
+######################################
 def custom_collate_fn(batch):
     """collate for List of InputExamples, not triplet examples"""
     texts = []
@@ -62,67 +63,9 @@ def custom_collate_fn(batch):
     
     return tokenized
 
-
-class InputExample:
-    """
-    Structure for one input example with texts, the label and a unique id
-    """
-    def __init__(self, 
-                 guid: str = '', 
-                 texts: List[str] = None,  
-                 label: Union[int, float] = 0, 
-                 entities: List = None,
-                 times: List = None
-                ):
-        """
-        Creates one InputExample with the given texts, guid and label
-        :param guid
-            id for the example
-        :param texts
-            the texts for the example. Note, str.strip() is called on the texts
-        :param label
-            the label for the example
-        """
-        self.guid = guid
-        self.texts = texts
-        self.label = label
-        self.entities = entities
-        self.times = times
-
-    def __str__(self):
-        return "<InputExample> label: {}, texts: {}".format(str(self.label), "; ".join(self.texts[:10]))
-
-
-def triplets_from_labeled_dataset(input_examples):
-    # Create triplets for a [(label, sentence), (label, sentence)...] dataset
-    # by using each example as an anchor and selecting randomly a
-    # positive instance with the same label and a negative instance with a different label
-    triplets = []
-    label2sentence = defaultdict(list)
-    for inp_example in input_examples:
-        label2sentence[inp_example.label].append(inp_example)
-
-    for inp_example in input_examples:
-        anchor = inp_example
-
-        if len(label2sentence[inp_example.label]) < 2: #We need at least 2 examples per label to create a triplet
-            continue
-
-        positive = None
-        while positive is None or positive.guid == anchor.guid:
-            positive = random.choice(label2sentence[inp_example.label])
-
-        negative = None
-        while negative is None or negative.label == anchor.label:
-            negative = random.choice(input_examples)
-
-        triplets.append(InputExample(texts=[anchor.texts, positive.texts, negative.texts],
-                                     entities=[anchor.entities, positive.entities, negative.entities]
-                                    ))
-    
-    return triplets
-
-
+#######################
+### offline training ##
+#######################
 def triplets_from_offline_sampling(input_examples, offline_triplet_idxes, mode="EPHN_triplets"):
     """
     use pre-determined triplets from offline sampling algorithms including EPHN, EPEN, HPHN, HPEN
@@ -131,11 +74,8 @@ def triplets_from_offline_sampling(input_examples, offline_triplet_idxes, mode="
 
     for (anchor_idx, pos_idx, neg_idx) in offline_triplet_idxes[mode]:
         anchor = input_examples[anchor_idx]
-
         positive = input_examples[pos_idx]
-
         negative = input_examples[neg_idx]
-        
         triplets.append([anchor, positive, negative])
     
     return triplets
@@ -174,7 +114,6 @@ def triplet_batching_collate(batch):
                 labels.append(example.label)
 
             tokenized = entity_transformer.tokenize(texts) # HACK: use the model's internal tokenize() function
-#             print(tokenized)
             tokenized['entity_type_ids'] = torch.tensor(entities)
             # tokenized['dates'] = torch.tensor(dates).float()
         
@@ -184,13 +123,6 @@ def triplet_batching_collate(batch):
         batch_to_device(labels_dict, device)
 
         return tokenized_dict, labels_dict
-
-
-def cosine_distance(embeddings1, embeddings2):
-    """
-    Compute the 2D matrix of cosine distances (1-cosine_similarity) between all embeddings.
-    """
-    return 1 - nn.CosineSimilarity(dim=1, eps=1e-6)(embeddings1, embeddings2)
 
 
 class BatchOfflineTripletLoss(nn.Module):
@@ -215,41 +147,35 @@ class BatchOfflineTripletLoss(nn.Module):
         return triplet_loss
 
 
-class BertPooler(nn.Module):
-    def __init__(self, hidden_size):
-        super().__init__()
-        self.dense = nn.Linear(hidden_size, hidden_size)
-        self.activation = nn.Tanh()
-
-    def forward(self, hidden_states):
-        # We "pool" the model by simply taking the hidden state corresponding
-        # to the first token.
-        first_token_tensor = hidden_states[:, 0]
-        pooled_output = self.dense(first_token_tensor)
-        pooled_output = self.activation(pooled_output)
-        return pooled_output
-
-
-# class EntitySBert_old(nn.Module):
-#     """entity-aware BERT"""
+#######################
+### E-SBERT & SBERT ###
+#######################
+class SBERT(nn.Module):
+    """sentence BERT
+    """
     
-#     def __init__(self, esbert_model, device="cuda"):
-#         super(EntitySBert_old, self).__init__()
-#         self.esbert_model = esbert_model.to(device)
-#         self.pooler = BertPooler(768).to(device)
+    def __init__(self, bert_model, device="cuda"):
+        super(SBERT, self).__init__()
+        self.bert_model = bert_model.to(device)
             
-#     def forward(self, features):
-                
-#         batch_to_device(features, device)
-#         bert_features = self.esbert_model(features)
-#         cls_embeddings = bert_features['cls_token_embeddings']
-#         token_embeddings = bert_features['token_embeddings']
-                
-#         pooled_features = self.pooler(token_embeddings)
+    def forward(self, features):
         
-#         features.update({"sentence_embedding": pooled_features})
-#         return features
+        batch_to_device(features, device)
+        bert_features = self.bert_model(features)
+        cls_embeddings = bert_features['cls_token_embeddings']
+        token_embeddings = bert_features['token_embeddings']
+        attention_mask = bert_features['attention_mask']
+        
+        output_vectors = []
+        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+        sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
+        sum_mask = input_mask_expanded.sum(1) # tokens not weighted
+        output_vectors.append(sum_embeddings / sum_mask)
+        output_vector = torch.cat(output_vectors, 1)
+        # print(output_vector.shape)
 
+        features.update({"sentence_embedding": output_vector})
+        return features
 
 class EntitySBert(nn.Module):
     """entity-aware BERT"""
@@ -280,6 +206,8 @@ class EntitySBert(nn.Module):
 
 def smart_batching_collate(batch):
         """
+        only loads entity and text (no time info)
+
         Transforms a batch from a SmartBatchingDataset to a batch of tensors for the model
         Here, batch is a list of tuples: [(tokens, label), ...]
         :param batch:
@@ -346,8 +274,6 @@ def train(loss_model, dataloader, epochs=2, train_batch_size=2, warmup_steps=100
                 data = next(data_iterator)
             
             features, labels = data
-#             for each_f in features:
-#                 print(each_f.keys(), each_f['input_ids'].shape)
             loss_value = loss_model(features, labels)
             loss_value.backward()
             torch.nn.utils.clip_grad_norm_(loss_model.parameters(), max_grad_norm)
@@ -360,9 +286,8 @@ def train(loss_model, dataloader, epochs=2, train_batch_size=2, warmup_steps=100
         global_step += 1
         print("Avg loss is {} on training data".format(total_loss / (epoch+1)))
 
-        # save models at certain checkpoints
-        # if epoch+1 in set([2, 5, 10, 30]):
-        torch.save(esbert_model, "{}/esbert_model_ep{}.pt".format(folder_name, epochs))
+        # save models at the last epoch
+        torch.save(esbert_model, "{}/model_ep{}.pt".format(folder_name, epochs))
         print("saving checkpoint: epoch {}".format(epochs))
 
 
@@ -374,6 +299,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
     parser.add_argument("--dataset_name", type=str, default="vaccine", help="dest dir")
+    parser.add_argument("--model_type", type=str, default="esbert", help="dest dir")
     parser.add_argument("--num_epochs", type=int, default=2, help="num_epochs")
     parser.add_argument("--train_batch_size", type=int, default=64, help="train_batch_size")
     parser.add_argument("--margin", type=float, default=2.0, help="margin")
@@ -383,34 +309,41 @@ def main():
     parser.add_argument("--loss_function", type=str, default="BatchHardTripletLoss", help="dest dir")
     parser.add_argument("--continue_model_path", type=str, default=None, help="dest dir")
     parser.add_argument("--offline_triplet_data_path", type=str, default="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/output/exp_esbert_ep7_mgn2.0_btch64_norm1.0_max_seq_128/train_dev_offline_triplets.pickle", help="dest dir")
-#     parser.add_argument("--dest_dir", type=str, default="./output/exp_time_esbert_ep2_m2/", help="dest dir")
-#     parser.add_argument('--dim', type=int, default=100, help='Number of dimensions. Default is 100.')
     args = parser.parse_args()
-    
+
+    num_epochs = args.num_epochs
+    train_batch_size = args.train_batch_size
+    margin = args.margin
+    max_grad_norm = args.max_grad_norm
+
+    # choose a dataset
     if args.dataset_name == "vaccine":
         with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/news_data/train_dev_entity.pickle', 'rb') as handle:
             train_corpus = pickle.load(handle)
-    else: # default News dataset
+    elif args.dataset_name == "news2013": # default News dataset
         with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/train_dev.pickle', 'rb') as handle:
             train_corpus = pickle.load(handle)
+    else:
+        print("Please specify a dataset!")
 
-#     with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/test.pickle', 'rb') as handle:
-#         test_corpus = pickle.load(handle)
     print("finished loading pickle files")
 
     # initialize a model
-    # entity_transformer = EntityTransformer("/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/pretrained/0_Transformer/")
     entity_transformer.max_seq_length = args.max_seq_length
-
     if args.continue_model_path:
         print("loading from a previously trained model")
-        esbert = torch.load(args.continue_model_path)
+        sbert_model = torch.load(args.continue_model_path)
     else:
-        esbert = EntitySBert(entity_transformer)
+        if args.model_type == "sbert":
+            print("loading SBERT model...")
+            sbert_model = torch.load("./pretrained_bert/exp_sbert_pretrained_max_seq_128/SBERT-base-nli-stsb-mean-tokens.pt") 
+        elif args.model_type == "esbert":
+            print("loading entity-aware E-SBERT model...")
+            sbert_model = EntitySBert(entity_transformer)
+        else:
+            print("Please specify a model type!")
     
-    # testing on a sample sample whether we can overfit
-#     train_corpus.documents = train_corpus.documents[:100]
-
+    # load training examples
     labels = [d['cluster'] for d in train_corpus.documents]
     le = preprocessing.LabelEncoder()
     targets = le.fit_transform(labels)
@@ -421,16 +354,6 @@ def main():
                                 guid=d['id'], 
                                 entities=d['bert_entities'], 
                                 ) for d in train_corpus.documents]
-
-    num_epochs = args.num_epochs
-    train_batch_size = args.train_batch_size
-    margin = args.margin
-    max_grad_norm = args.max_grad_norm
-
-#     sampled_examples = random.sample(dev_examples, 30)
-
-#     train_trip_examples = triplets_from_labeled_dataset(train_examples)
-    # train_dataloader = DataLoader(train_examples, sampler=sampler, batch_size=train_batch_size)
 
     # choose sampling method
     if args.sample_method == "random":
@@ -444,19 +367,21 @@ def main():
         train_dataloader = DataLoader(train_dev_triplets, shuffle=True, batch_size=train_batch_size)
         train_dataloader.collate_fn = triplet_batching_collate
 
+        print("train_dataloader", len(train_dataloader))
+
     # choose loss model
     if args.loss_function == "BatchHardTripletLoss":
-        loss_model = losses.BatchHardTripletLoss(model=esbert, 
+        loss_model = losses.BatchHardTripletLoss(model=sbert_model, 
                                                 distance_metric=losses.BatchHardTripletLossDistanceFunction.cosine_distance,
                                                 margin=margin)
     elif args.loss_function == "offline_sampling":
-        loss_model = BatchOfflineTripletLoss(esbert, distance_metric=cosine_distance, margin=margin)
+        loss_model = BatchOfflineTripletLoss(sbert_model, distance_metric=cosine_distance, margin=margin)
 
     warmup_steps = math.ceil(len(train_examples)*num_epochs/train_batch_size*0.1) #10% of train data for warm-up
     if args.continue_model_path:
-        folder_name = "output/{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_sample_{}_continued_training".format("exp_esbert", args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.sample_method)
+        folder_name = "output/exp_{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_sample_{}_continued_training".format(args.model_type, args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.sample_method)
     else:
-        folder_name = "output/{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_sample_{}".format("exp_esbert", args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.sample_method)
+        folder_name = "output/exp_{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_sample_{}".format(args.model_type, args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.sample_method)
     os.makedirs(folder_name, exist_ok=True)
     train(loss_model, 
         train_dataloader, 
@@ -465,24 +390,200 @@ def main():
         warmup_steps=warmup_steps, 
         max_grad_norm=max_grad_norm,
         device=device,
-        folder_name=folder_name, esbert_model=esbert)
+        folder_name=folder_name, esbert_model=sbert_model)
 
 
 if __name__ == "__main__":
     main()
 
 """
-#######################
-### TRAINING on train triplets
-#######################
+##############################################
+### SBERT : vaccine train triplets
+##############################################
 export CUDA_VISIBLE_DEVICES=1
 for epochnum in 1 2 3 4 5 6 7 8 9 10
 do
-    python train_esbert.py --num_epochs ${epochnum} --max_seq_length 128 \
+    python train_entity_sbert_models.py --model_type sbert \
+        --dataset_name vaccine \
+        --num_epochs ${epochnum} \
+        --max_seq_length 128 \
         --train_batch_size 16 \
         --sample_method offline --offline_triplet_data_path ./news_data/amt_triplets.pickle
 done
-for epochnum in 1 2 
+for epochnum in 1 2 3 4 5 6
+do
+    echo "epochnum", ${epochnum}
+    python evaluate_entity_models.py \
+        --use_vaccine_saved_triplets \
+        --model_path ./output/exp_sbert_vaccine_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_sample_offline/esbert_model_ep${epochnum}.pt
+done
+
+#####################################################################
+### SBERT : News2013 -- online training
+#####################################################################
+export CUDA_VISIBLE_DEVICES=1
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    python train_entity_sbert_models.py --model_type sbert \
+        --sample_method random \
+        --dataset_name news2013 \
+        --num_epochs ${epochnum} \
+        --max_seq_length 230 \
+        --train_batch_size 32
+done
+
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python evaluate_entity_models.py \
+        --use_saved_triplets \
+        --model_path ./output/exp_sbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/model_ep${epochnum}.pt
+done
+
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python extract_features.py --dataset_name news2013 \
+        --model_path ./output/exp_sbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/model_ep${epochnum}.pt
+done
+
+
+for num_epoch in 1 2 3 4 5 6 7 8 9 10
+do
+    echo ${iter}
+    python run_retrospective_clustering.py --cluster_algorithm hdbscan \
+    --min_cluster_size 7 --min_samples 3 \
+    --input_folder ./output/exp_sbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
+done
+
+#####################################################################
+### SBERT : News2013 -- offline triplets
+#####################################################################
+
+export CUDA_VISIBLE_DEVICES=0
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    python train_entity_sbert_models.py --model_type sbert \
+        --sample_method offline \
+        --offline_triplet_data_path ./dataset/amt_triples.pickle \
+        --dataset_name news2013 \
+        --num_epochs ${epochnum} \
+        --max_seq_length 128 \
+        --train_batch_size 16
+done
+
+# extract 
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python extract_features.py --dataset_name news2013 \
+        --model_path ./output/exp_sbert_news2013_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_sample_offline/model_ep${epochnum}.pt
+done
+
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python extract_features.py --dataset_name news2013 \
+        --model_path ./output/exp_esbert_news2013_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_100_sample_offline/model_ep${epochnum}.pt
+done
+
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python extract_features.py --dataset_name news2013 \
+        --model_path ./output/exp_pos2vec_esbert_news2013_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_fuse_selfatt_pool_offline_sample_offline/model_ep${epochnum}.pt
+done
+
+
+# clustering
+for num_epoch in 1 2 3 4 5 6 7 8 9 10
+do
+    echo ${iter}
+    python run_retrospective_clustering.py --cluster_algorithm hdbscan \
+    --min_cluster_size 7 --min_samples 3 \
+    --input_folder  ./output/exp_sbert_news2013_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_sample_offline
+done
+
+
+for num_epoch in 1 2 3 4 5 6 7 8 9 10
+do
+    echo ${iter}
+    python run_retrospective_clustering.py --cluster_algorithm hdbscan \
+    --min_cluster_size 7 --min_samples 3 \
+    --input_folder  ./output/exp_esbert_news2013_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_100_sample_offline
+done
+
+for num_epoch in 1 2 3 4 5 6 7 8 9 10
+do
+    echo ${iter}
+    python run_retrospective_clustering.py --cluster_algorithm hdbscan \
+    --min_cluster_size 7 --min_samples 3 \
+    --input_folder  ./output/exp_pos2vec_esbert_news2013_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_fuse_selfatt_pool_offline_sample_offline
+done
+
+# evaluate 
+export CUDA_VISIBLE_DEVICES=0
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python evaluate_entity_models.py \
+        --use_saved_triplets \
+        --model_path ./output/exp_sbert_news2013_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_sample_offline/model_ep${epochnum}.pt
+done
+
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python evaluate_entity_models.py \
+        --use_saved_triplets \
+        --model_path ./output/exp_esbert_news2013_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_100_sample_offline/model_ep${epochnum}.pt
+done
+
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python evaluate_entity_models.py \
+        --use_saved_triplets \
+        --model_path ./output/exp_pos2vec_esbert_news2013_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_fuse_selfatt_pool_offline_sample_offline/model_ep${epochnum}.pt
+done
+
+
+#####################################################################
+### SBERT : News2013 data model + vaccine train triplets
+#####################################################################
+export CUDA_VISIBLE_DEVICES=3
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    python train_entity_sbert_models.py --model_type sbert \
+        --dataset_name vaccine \
+        --num_epochs ${epochnum} \
+        --max_seq_length 128 \
+        --train_batch_size 16 \
+        --sample_method offline --offline_triplet_data_path ./news_data/amt_triplets.pickle \
+        --continue_model_path ./output/exp_sbert_ep2_mgn2.0_btch32_norm1.0_max_seq_256/sbert.pt
+done
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python evaluate_entity_models.py \
+        --use_vaccine_saved_triplets \
+        --model_path ./output/exp_sbert_vaccine_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_sample_offline_continued_training/esbert_model_ep${epochnum}.pt
+done
+
+##############################################
+### E-SBERT : vaccine train triplets
+##############################################
+export CUDA_VISIBLE_DEVICES=2
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    python train_entity_sbert_models.py --model_type esbert \
+        --dataset_name vaccine \
+        --num_epochs ${epochnum} \
+        --max_seq_length 128 \
+        --train_batch_size 16 \
+        --sample_method offline --offline_triplet_data_path ./news_data/amt_triplets.pickle
+done
+for epochnum in 1 2 3 4 5 6
 do
     echo "epochnum", ${epochnum}
     python evaluate_entity_models.py \
@@ -490,24 +591,86 @@ do
         --model_path ./output/exp_esbert_vaccine_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_sample_offline/esbert_model_ep${epochnum}.pt
 done
 
-#######################
-### Pre-trained News model + TRAINING on train triplets
-#######################
-export CUDA_VISIBLE_DEVICES=2
+##############################################
+### E-SBERT : News2013 -- online training
+##############################################
+export CUDA_VISIBLE_DEVICES=3
 for epochnum in 1 2 3 4 5 6 7 8 9 10
 do
-    python train_esbert.py --num_epochs ${epochnum} --max_seq_length 128 \
+    python train_entity_sbert_models.py --model_type esbert \
+        --sample_method random \
+        --dataset_name news2013 \
+        --num_epochs ${epochnum} \
+        --max_seq_length 230 \
+        --train_batch_size 32
+done
+
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python evaluate_entity_models.py \
+        --use_saved_triplets \
+        --model_path ./output/exp_esbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/model_ep${epochnum}.pt
+done
+
+
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python extract_features.py --dataset_name news2013 \
+        --model_path ./output/exp_esbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/model_ep${epochnum}.pt
+done
+
+#####################################################################
+### E-SBERT : News2013 -- offline triplets
+#####################################################################
+
+export CUDA_VISIBLE_DEVICES=0
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    python train_entity_sbert_models.py --model_type esbert \
+        --sample_method offline \
+        --offline_triplet_data_path ./dataset/amt_triples.pickle \
+        --dataset_name news2013 \
+        --num_epochs ${epochnum} \
+        --max_seq_length 128 \
+        --train_batch_size 16
+done
+
+
+
+#####################################################################
+### E-SBERT : News2013 data model + vaccine train triplets
+#####################################################################
+export CUDA_VISIBLE_DEVICES=0
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    python train_entity_sbert_models.py --model_type esbert \
+        --dataset_name vaccine \
+        --num_epochs ${epochnum} \
+        --max_seq_length 128 \
         --train_batch_size 16 \
         --sample_method offline --offline_triplet_data_path ./news_data/amt_triplets.pickle \
         --continue_model_path ./output/exp_esbert_ep2_mgn2.0_btch32_norm1.0_max_seq_256_sample_random/esbert_model_ep2.pt
 done
 
-for epochnum in 1 2 3
+for epochnum in 1 2 3 4 5
 do
     echo "epochnum", ${epochnum}
     python evaluate_entity_models.py \
         --use_vaccine_saved_triplets \
         --model_path ./output/exp_esbert_vaccine_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_sample_offline_continued_training/esbert_model_ep${epochnum}.pt
+done
+
+
+for epochnum in 1 2 3 4 5 10
+do
+    python train_entity_sbert_models.py --model_type esbert \
+        --dataset_name news2013 \
+        --num_epochs ${epochnum} \
+        --max_seq_length 230 \
+        --train_batch_size 32 \
+        --sample_method random
 done
 
 """

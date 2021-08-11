@@ -1,10 +1,12 @@
 import re
 import argparse
+import pickle
 from sklearn.metrics.pairwise import paired_cosine_distances, paired_euclidean_distances, paired_manhattan_distances
 
 parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
 parser.add_argument("--model_path", type=str, default="./output/exp_time_esbert_ep2_mgn2.0_btch8_norm1.0_max_seq_128/time_esbert_model_ep1.pt", help="model_path")
 parser.add_argument("--use_saved_triplets", dest='use_saved_triplets', action='store_true') # default is false
+parser.add_argument("--use_vaccine_saved_triplets", dest='use_vaccine_saved_triplets', action='store_true') # default is false
 args = parser.parse_args()
 
 if "exp_time_esbert" in args.model_path:
@@ -13,9 +15,26 @@ if "exp_time_esbert" in args.model_path:
 elif "exp_pos2vec_esbert" in args.model_path:
     model_type = 'pos2vec_esbert'
     from train_pos2vec_esbert import *
+    # from train_pos2vec_esbert_vaccine import * #HACK
+    if "time_hour" in args.model_path:
+        entity_transformer.time_encoding = "hour"
+    entity_transformer.split = "test"
+elif "exp_vaccine_pos2vec_esbert" in args.model_path:
+    model_type = 'pos2vec_esbert_vaccine'
+    from train_pos2vec_esbert_vaccine import *
+    if "time_hour" in args.model_path:
+        entity_transformer.time_encoding = "hour"
+    entity_transformer.split = "test"
+elif "exp_learned_pos2vec_esbert" in args.model_path:
+    model_type = 'learned_pos2vec_esbert'
+    from train_learned_pos2vec_esbert import *
+    entity_transformer.split = "test"
 elif "exp_esbert" in args.model_path:
     model_type = 'esbert'
-    from train_esbert import *
+    from train_entity_sbert_models import *
+elif "exp_sbert" in args.model_path:
+    model_type = "sbert"
+    from train_entity_sbert_models import *
 
 
 # torch.backends.cudnn.deterministic = True
@@ -82,7 +101,7 @@ def custom_collate_fn_triplets(batch):
             texts_list[idx].append(example.texts[idx]) # example.texts is a list strings with length 3: [text1, text2, text3]
             if model_type == "tesbert":
                 dates_list[idx].append(convert_str_to_date_tensor(example.times[idx]))
-            elif model_type == "pos2vec_esbert":
+            elif "pos2vec_esbert" in model_type:
                 dates_list[idx].append(compute_time_stamp(example.times[idx]))
             
             entities_np = np.array(example.entities[idx]) 
@@ -129,9 +148,13 @@ def evaluate_model(model, test_dataloader):
 
 def main():
 
-    if args.use_saved_triplets:
+    if args.use_vaccine_saved_triplets:
+        print("using pre-extracted vaccine triplets...")
+        with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/news_data/test_eventsim_triplets.pickle', 'rb') as handle:
+            test_triplets = pickle.load(handle)
+    elif args.use_saved_triplets:
         print("using pre-extracted triplets...")
-        with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test_eventsim_triplets.pickle', 'rb') as handle:
+        with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/amt_test_triples.pickle', 'rb') as handle:
             test_triplets = pickle.load(handle)
     else:
         print("using newly-generated triplets...")
@@ -142,17 +165,42 @@ def main():
         test_corpus.documents = test_corpus.documents[:]
         test_examples, test_labels = get_examples_labels(test_corpus)
         test_triplets = triplets_from_labeled_dataset(test_examples)
+    
     test_dataloader = DataLoader(test_triplets, shuffle=False, batch_size=8)
-
+    
     max_seq_length = int(re.search(r"max\_seq\_(\d*)", args.model_path).group(1))
+    if args.use_vaccine_saved_triplets:
+        max_seq_length = 128
     entity_transformer.max_seq_length = max_seq_length # entity_transformer is only for tokenization
     model = torch.load(args.model_path)
     model.eval() # switch to evaluation mode, to ensure reproducibility during test time
 
     acc = evaluate_model(model, test_dataloader)
-    # acc = evaluate_model(model, test_dataloader)
-    # acc = evaluate_model(model, test_dataloader)
-
 
 if __name__ == "__main__":
     main()
+
+"""
+#######################
+### SBERT : pretrained / finetuned on Vaccine
+#######################
+python evaluate_entity_models.py \
+    --use_vaccine_saved_triplets \
+    --model_path ./pretrained_bert/exp_sbert_pretrained_max_seq_128/SBERT-base-nli-stsb-mean-tokens.pt
+
+python evaluate_entity_models.py \
+    --use_vaccine_saved_triplets \
+    --model_path ./output/exp_sbert_ep2_mgn2.0_btch32_norm1.0_max_seq_256/sbert.pt
+
+python evaluate_entity_models.py \
+    --use_vaccine_saved_triplets \
+    --model_path ./pretrained_bert/exp_sbert_pretrained_max_seq_128/SBERT-base-nli-stsb-mean-tokens.pt
+
+#######################
+### SBERT : pretrained / finetuned on News2013
+#######################
+python evaluate_entity_models.py \
+    --use_saved_triplets \
+    --model_path ./pretrained_bert/exp_sbert_pretrained_max_seq_128/SBERT-base-nli-stsb-mean-tokens.pt
+
+"""

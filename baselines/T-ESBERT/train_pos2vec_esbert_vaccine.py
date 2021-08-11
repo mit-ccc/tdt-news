@@ -1,5 +1,6 @@
 """
 train time-entity sentenceBERT (our model)
+
 """
 import json, random, logging, os, shutil
 import math, pickle, queue
@@ -39,45 +40,42 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 from sentence_transformers.evaluation import TripletEvaluator
 from sklearn import preprocessing
 from torch.utils.data.sampler import Sampler
-
-from utils import CorpusClass, InputExample, cosine_distance
-
-
+from utils import CorpusClass
 # time_encoding = {'use': "day"} 
 
-# class MyBatchSampler(Sampler):
-#     '''
-#     randomly sample two instances from the same class at once and order them in order
-#     e.g. [ 80,  80, 342, 342, 213, 213, 342, 342]
-#     '''
+class MyBatchSampler(Sampler):
+    '''
+    randomly sample two instances from the same class at once and order them in order
+    e.g. [ 80,  80, 342, 342, 213, 213, 342, 342]
+    '''
 
-#     def __init__(self, labels):
-#         self.label2idx = {}
-#         indices = list(range(len(labels)))
-#         for idx in range(len(labels)):
-#             label = labels[idx]
-#             if label in self.label2idx:
-#                 self.label2idx[label].append(idx)
-#             else:
-#                 self.label2idx[label] = [idx]
-#         # sample two instances consecutively
-#         sample_n = 8
-#         self.idx = []
-#         for label in labels:
-#             if len(self.label2idx[label]) >= sample_n:
-#                 sampled_instances = random.sample(self.label2idx[label], sample_n)
-#             else:
-#                 tmp = self.label2idx[label]*10 # make it longer
-#                 sampled_instances = tmp[:sample_n]
-#             self.idx += sampled_instances
-#             # neg_sampled_instances = random.sample(indices, sample_n)
-#             # self.idx += neg_sampled_instances
+    def __init__(self, labels):
+        self.label2idx = {}
+        indices = list(range(len(labels)))
+        for idx in range(len(labels)):
+            label = labels[idx]
+            if label in self.label2idx:
+                self.label2idx[label].append(idx)
+            else:
+                self.label2idx[label] = [idx]
+        # sample two instances consecutively
+        sample_n = 8
+        self.idx = []
+        for label in labels:
+            if len(self.label2idx[label]) >= sample_n:
+                sampled_instances = random.sample(self.label2idx[label], sample_n)
+            else:
+                tmp = self.label2idx[label]*10 # make it longer
+                sampled_instances = tmp[:sample_n]
+            self.idx += sampled_instances
+            # neg_sampled_instances = random.sample(indices, sample_n)
+            # self.idx += neg_sampled_instances
 
-#     def __iter__(self):
-#         return iter(self.idx)
+    def __iter__(self):
+        return iter(self.idx)
 
-#     def __len__(self):
-#         return len(self.idx)
+    def __len__(self):
+        return len(self.idx)
 
 # class Date2VecConvert(nn.Module):
 #     def __init__(self, model_path="./d2v_model/d2v_98291_17.169918439404636.pth"):
@@ -98,9 +96,7 @@ from utils import CorpusClass, InputExample, cosine_distance
 #                  date_obj.year, date_obj.month, date_obj.day]
 #     return date_list
 
-##############################################
-### For inference use: Feature Extraction ####
-##############################################
+
 def custom_collate_fn(batch):
     """collate for List of InputExamples, not triplet examples"""
     texts = []
@@ -125,70 +121,67 @@ def custom_collate_fn(batch):
     return tokenized
 
 
-# class InputExample:
-#     """
-#     Structure for one input example with texts, the label and a unique id
-#     """
-#     def __init__(self, 
-#                  guid: str = '', 
-#                  texts: List[str] = None,  
-#                  label: Union[int, float] = 0, 
-#                  entities: List = None,
-#                  times: List = None
-#                 ):
-#         """
-#         Creates one InputExample with the given texts, guid and label
-#         :param guid
-#             id for the example
-#         :param texts
-#             the texts for the example. Note, str.strip() is called on the texts
-#         :param label
-#             the label for the example
-#         """
-#         self.guid = guid
-#         self.texts = texts
-#         self.label = label
-#         self.entities = entities
-#         self.times = times
+class InputExample:
+    """
+    Structure for one input example with texts, the label and a unique id
+    """
+    def __init__(self, 
+                 guid: str = '', 
+                 texts: List[str] = None,  
+                 label: Union[int, float] = 0, 
+                 entities: List = None,
+                 times: List = None
+                ):
+        """
+        Creates one InputExample with the given texts, guid and label
+        :param guid
+            id for the example
+        :param texts
+            the texts for the example. Note, str.strip() is called on the texts
+        :param label
+            the label for the example
+        """
+        self.guid = guid
+        self.texts = texts
+        self.label = label
+        self.entities = entities
+        self.times = times
 
-#     def __str__(self):
-#         return "<InputExample> label: {}, texts: {}".format(str(self.label), "; ".join(self.texts[:10]))
+    def __str__(self):
+        return "<InputExample> label: {}, texts: {}".format(str(self.label), "; ".join(self.texts[:10]))
 
 
-# def triplets_from_labeled_dataset(input_examples):
-#     # Create triplets for a [(label, sentence), (label, sentence)...] dataset
-#     # by using each example as an anchor and selecting randomly a
-#     # positive instance with the same label and a negative instance with a different label
-#     triplets = []
-#     label2sentence = defaultdict(list)
-#     for inp_example in input_examples:
-#         label2sentence[inp_example.label].append(inp_example)
+def triplets_from_labeled_dataset(input_examples):
+    # Create triplets for a [(label, sentence), (label, sentence)...] dataset
+    # by using each example as an anchor and selecting randomly a
+    # positive instance with the same label and a negative instance with a different label
+    triplets = []
+    label2sentence = defaultdict(list)
+    for inp_example in input_examples:
+        label2sentence[inp_example.label].append(inp_example)
 
-#     for inp_example in input_examples:
-#         anchor = inp_example
+    for inp_example in input_examples:
+        anchor = inp_example
 
-#         if len(label2sentence[inp_example.label]) < 2: #We need at least 2 examples per label to create a triplet
-#             continue
+        if len(label2sentence[inp_example.label]) < 2: #We need at least 2 examples per label to create a triplet
+            continue
 
-#         positive = None
-#         while positive is None or positive.guid == anchor.guid:
-#             positive = random.choice(label2sentence[inp_example.label])
+        positive = None
+        while positive is None or positive.guid == anchor.guid:
+            positive = random.choice(label2sentence[inp_example.label])
 
-#         negative = None
-#         while negative is None or negative.label == anchor.label:
-#             negative = random.choice(input_examples)
+        negative = None
+        while negative is None or negative.label == anchor.label:
+            negative = random.choice(input_examples)
 
-#         triplets.append(InputExample(texts=[anchor.texts, positive.texts, negative.texts],
-#                                      entities=[anchor.entities, positive.entities, negative.entities],
-#                                      times=[anchor.times, positive.times, negative.times]
-#                                     ))
+        triplets.append(InputExample(texts=[anchor.texts, positive.texts, negative.texts],
+                                     entities=[anchor.entities, positive.entities, negative.entities],
+                                     times=[anchor.times, positive.times, negative.times]
+                                    ))
     
-#     return triplets
+    return triplets
 
 
-#######################
-### offline training ##
-#######################
 def triplets_from_offline_sampling(input_examples, offline_triplet_idxes, mode="EPHN_triplets"):
     """
     use pre-determined triplets from offline sampling algorithms including EPHN, EPEN, HPHN, HPEN
@@ -240,6 +233,7 @@ def triplet_batching_collate(batch):
                 labels.append(example.label)
 
             tokenized = entity_transformer.tokenize(texts) # HACK: use the model's internal tokenize() function
+#             print(tokenized)
             tokenized['entity_type_ids'] = torch.tensor(entities)
             tokenized['dates'] = torch.tensor(dates).float()
         
@@ -249,6 +243,13 @@ def triplet_batching_collate(batch):
         batch_to_device(labels_dict, device)
 
         return tokenized_dict, labels_dict
+
+
+def cosine_distance(embeddings1, embeddings2):
+    """
+    Compute the 2D matrix of cosine distances (1-cosine_similarity) between all embeddings.
+    """
+    return 1 - nn.CosineSimilarity(dim=1, eps=1e-6)(embeddings1, embeddings2)
 
 
 class BatchOfflineTripletLoss(nn.Module):
@@ -273,24 +274,21 @@ class BatchOfflineTripletLoss(nn.Module):
         return triplet_loss
 
 
-# class BertPooler(nn.Module):
-#     def __init__(self, hidden_size):
-#         super().__init__()
-#         self.dense = nn.Linear(hidden_size, hidden_size)
-#         self.activation = nn.Tanh()
+class BertPooler(nn.Module):
+    def __init__(self, hidden_size):
+        super().__init__()
+        self.dense = nn.Linear(hidden_size, hidden_size)
+        self.activation = nn.Tanh()
 
-#     def forward(self, hidden_states):
-#         # We "pool" the model by simply taking the hidden state corresponding
-#         # to the first token.
-#         first_token_tensor = hidden_states[:, 0]
-#         pooled_output = self.dense(first_token_tensor)
-#         pooled_output = self.activation(pooled_output)
-#         return pooled_output
+    def forward(self, hidden_states):
+        # We "pool" the model by simply taking the hidden state corresponding
+        # to the first token.
+        first_token_tensor = hidden_states[:, 0]
+        pooled_output = self.dense(first_token_tensor)
+        pooled_output = self.activation(pooled_output)
+        return pooled_output
 
 
-#######################
-#### Time ESBERT ######
-#######################
 class BertMeanPooler(nn.Module):
     def __init__(self, hidden_size):
         super().__init__()
@@ -485,8 +483,8 @@ def train(loss_model, dataloader, epochs=2, train_batch_size=2, warmup_steps=100
         global_step += 1
         print("Avg loss is {} on training data".format(total_loss / (epoch+1)))
 
-        # save models at the last checkpoint
-        torch.save(esbert_model, "{}/model_ep{}.pt".format(folder_name, epochs))
+        # save models at certain checkpoints
+        torch.save(esbert_model, "{}/time_esbert_model_ep{}.pt".format(folder_name, epochs))
         print("saving checkpoint: epoch {}".format(epochs))
 
 
@@ -508,11 +506,11 @@ def compute_time_stamp(string):
     """
     # the start date is fixed
     if entity_transformer.split == "train":
-        anchor_date = datetime.strptime("2013-12-18 12:27:00", "%Y-%m-%d %H:%M:%S")
+        anchor_date = datetime.strptime("2021-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")
     elif entity_transformer.split == "test":
-        anchor_date = datetime.strptime("2014-11-02 21:18:00", "%Y-%m-%d %H:%M:%S")
+        anchor_date = datetime.strptime("2021-04-26 00:00:00", "%Y-%m-%d %H:%M:%S") #TODO: change the time here later
     else:
-        print("entity_transformer.split IS WRONG")
+        print("SOMETHING IS WRONG")
     date_obj = datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
     delta = date_obj - anchor_date
 
@@ -521,10 +519,9 @@ def compute_time_stamp(string):
     elif entity_transformer.time_encoding == "hour":
         return [int(delta.seconds // 3600) + delta.days * 24]
     else:
-        print("entity_transformer.time_encoding IS WRONG")
+        print("SOMETHING IS WRONG")
     # else: # if nothing happens
     #     return [delta.days]
-
 
 # global variable
 entity_transformer = EntityTransformer("/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/pretrained_bert/0_Transformer/")
@@ -535,21 +532,22 @@ def main():
 
     random.seed(123)
     parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
-    parser.add_argument("--dataset_name", type=str, default="news2013", help="dest dir")
+    # parser.add_argument("--dataset_name", type=str, default="vaccine", help="dest dir")
     parser.add_argument("--num_epochs", type=int, default=2, help="num_epochs")
-    parser.add_argument("--train_batch_size", type=int, default=64, help="train_batch_size")
+    parser.add_argument("--train_batch_size", type=int, default=16, help="train_batch_size")
     parser.add_argument("--margin", type=float, default=2.0, help="margin")
     parser.add_argument("--max_grad_norm", type=float, default=1.0, help="max_grad_norm")
-    parser.add_argument("--max_seq_length", type=int, default=512, help="max_seq_length")
+    parser.add_argument("--max_seq_length", type=int, default=128, help="max_seq_length")
     parser.add_argument("--time_encoding", type=str, default="day", help="dest dir")
     parser.add_argument("--fuse_method", type=str, default="selfatt_pool", help="dest dir")
     parser.add_argument("--sample_method", type=str, default="random", help="dest dir")
     parser.add_argument("--loss_function", type=str, default="BatchHardTripletLoss", help="dest dir")
     parser.add_argument("--freeze_time_module", type=int, default=0, help="max_seq_length")
     parser.add_argument("--offline_triplet_data_path", type=str, default="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/output/exp_time_esbert_ep3_mgn2.0_btch64_norm1.0_max_seq_128_fuse_selfatt_pool_random_sample_BatchHardTripletLoss/train_dev_offline_triplets.pickle", help="dest dir")
+    parser.add_argument("--continue_model_path", type=str, default=None, help="dest dir")
     args = parser.parse_args()
 
-    with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/train_dev.pickle', 'rb') as handle:
+    with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/news_data/train_dev_entity.pickle', 'rb') as handle:
         train_corpus = pickle.load(handle)
 
 #     with open('/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/test.pickle', 'rb') as handle:
@@ -560,16 +558,22 @@ def main():
     # entity_transformer = EntityTransformer("/mas/u/hjian42/tdt-twitter/baselines/news-clustering/entity-bert/pretrained/0_Transformer/")
     entity_transformer.max_seq_length = args.max_seq_length
     entity_transformer.time_encoding = args.time_encoding
-    entity_transformer.split = "train"
-    print("Running with split {};time_encoding {}".format(entity_transformer.split, entity_transformer.time_encoding))
+    # entity_transformer.split = "test" # turn on when we train on test triples
+    print("Running with split {}; time_encoding {}".format(entity_transformer.split, entity_transformer.time_encoding))
     # date2vec_model = Date2VecConvert(model_path="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/Date2Vec/d2v_model/d2v_98291_17.169918439404636.pth")
     if args.time_encoding == "day":
-        time_position_model = pos2vec_model(model_path='./dataset/pos2vec_embed_size768_time_steps_1024.pt')
+        time_position_model = pos2vec_model(model_path='./news_data/pos2vec_embed_size768_time_steps_1024.pt')
     elif args.time_encoding == "hour":
         time_position_model = pos2vec_model(model_path='./dataset/pos2vec_embed_size768_time_steps_14880.pt')
     print("finished loading time model based on time position embedding")
 
-    time_esbert = PositionTimeESBert(entity_transformer, time_position_model, fuse_method=args.fuse_method, freeze_time_module=args.freeze_time_module)
+    if args.continue_model_path:
+        print("loading from a previously trained model")
+        time_esbert = torch.load(args.continue_model_path)
+    else:
+        print("loading a new model")
+        time_esbert = PositionTimeESBert(entity_transformer, time_position_model, fuse_method=args.fuse_method, freeze_time_module=args.freeze_time_module)
+#     train_corpus.documents = train_corpus.documents[:100]
 
     labels = [d['cluster'] for d in train_corpus.documents]
     le = preprocessing.LabelEncoder()
@@ -588,21 +592,23 @@ def main():
     margin = args.margin
     max_grad_norm = args.max_grad_norm
 
-
+#     sampled_examples = random.sample(dev_examples, 30)
+#     train_trip_examples = triplets_from_labeled_dataset(train_examples)
+    
     # sampling
     if args.sample_method == "random":
         train_dataloader = DataLoader(train_examples, shuffle=True, batch_size=train_batch_size)
         train_dataloader.collate_fn = smart_batching_collate
-    # elif args.sample_method == "regular": # sample 8 instances of the same class each time
-    #     sampler = MyBatchSampler(labels)
-    #     train_dataloader = DataLoader(train_examples, sampler=sampler, batch_size=train_batch_size)
-    #     train_dataloader.collate_fn = smart_batching_collate
-    elif args.sample_method == "offline":
+    elif args.sample_method == "regular": # sample 8 instances of the same class each time
+        sampler = MyBatchSampler(labels)
+        train_dataloader = DataLoader(train_examples, sampler=sampler, batch_size=train_batch_size)
+        train_dataloader.collate_fn = smart_batching_collate
+    elif args.sample_method in set(['synthetic_triplets', 'train_triplet', 'test_triplet']):
         args.loss_function = "offline"
         with open(args.offline_triplet_data_path, 'rb') as handle:
             train_offline_triplets_idxes = pickle.load(handle)
-        train_dev_triplets = triplets_from_offline_sampling(train_examples, train_offline_triplets_idxes, mode="train_triplet")
-        train_dataloader = DataLoader(train_dev_triplets, shuffle=True, batch_size=train_batch_size)
+        train_dev_triplets = triplets_from_offline_sampling(train_examples, train_offline_triplets_idxes, mode=args.sample_method)
+        train_dataloader = DataLoader(train_dev_triplets, shuffle=True, batch_size=train_batch_size) ## TODO: shuffle to True
         train_dataloader.collate_fn = triplet_batching_collate
     
     # loss function
@@ -628,9 +634,9 @@ def main():
     # if args.freeze_time_module:
     #     folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}_time_frozen".format("exp_pos2vec_esbert", num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
     # else:
-    folder_name = "output/{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}".format("exp_pos2vec_esbert", args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
-    if args.time_encoding != "day":
-        folder_name = "output/{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}_time_{}".format("exp_pos2vec_esbert", args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function, args.time_encoding)
+    folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}".format("exp_vaccine_pos2vec_esbert", num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
+    if args.continue_model_path:
+        folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}_continued_training".format("exp_vaccine_pos2vec_esbert", num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
     os.makedirs(folder_name, exist_ok=True)
     train(loss_model, 
         train_dataloader,
@@ -639,80 +645,90 @@ def main():
         warmup_steps=warmup_steps, 
         max_grad_norm=max_grad_norm,
         device=device,
-        folder_name=folder_name, esbert_model=time_esbert)
+        folder_name=folder_name, 
+        esbert_model=time_esbert)
+    
+#     folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}".format("exp_time_esbert", num_epochs, margin, train_batch_size, max_grad_norm)
+#     os.makedirs(folder_name, exist_ok=True)
+#     torch.save(esbert, "{}/time_esbert_model.pt".format(folder_name))
+    
+    # sanity checking
+    # dev_dataloader = DataLoader(dev_examples, shuffle=False, batch_size=2)
+
+    # with torch.no_grad():
+    #     sentence_embeddings_list = []
+    #     dev_dataloader.collate_fn = custom_collate_fn
+    #     for batch in iter(dev_dataloader):
+    #         output_features = time_esbert.forward(batch)
+    #         print("output_features", output_features.shape)
+    #         break
+
 
 
 if __name__ == "__main__":
     main()
 
-"""
-#####################################################################
-### T-E-SBERT : News2013 -- online triplets
-#####################################################################
 
+"""
+#######################
+### evaluate on pre-trained models
+#######################
+# evaluate a few models
+python evaluate_sbert.py \
+        --use_vaccine_saved_triplets \
+        --model_path bert-base-nli-stsb-mean-tokens
+
+python evaluate_sbert.py \
+        --use_vaccine_saved_triplets \
+        --model_path ./output/exp_sbert_ep3_mgn2.0_btch32_norm1.0_max_seq_256
+
+python evaluate_entity_models.py \
+        --use_vaccine_saved_triplets \
+        --model_path ./output/exp_esbert_ep2_mgn2.0_btch32_norm1.0_max_seq_256_sample_random/esbert_model_ep2.pt
+
+python evaluate_entity_models.py \
+        --use_vaccine_saved_triplets \
+        --model_path ./output/exp_pos2vec_esbert_ep2_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss/time_esbert_model_ep2.pt
+
+
+#######################
+### TRAINING on train triplets
+#######################
+export CUDA_VISIBLE_DEVICES=1
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    python train_pos2vec_esbert_vaccine.py --num_epochs ${epochnum} --max_seq_length 128 \
+        --train_batch_size 16 --fuse_method selfatt_pool --time_encoding day \
+        --sample_method train_triplet --offline_triplet_data_path ./news_data/amt_triplets.pickle
+done
+for epochnum in 1 2 3 4 5 6 7 8 9 10
+do
+    echo "epochnum", ${epochnum}
+    python evaluate_entity_models.py \
+        --use_vaccine_saved_triplets \
+        --model_path ./output/exp_vaccine_pos2vec_esbert_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_fuse_selfatt_pool_train_triplet_sample_offline/time_esbert_model_ep${epochnum}.pt
+done
+
+#######################
+### Pre-trained News model + TRAINING on train triplets
+#######################
 export CUDA_VISIBLE_DEVICES=2
 for epochnum in 1 2 3 4 5 6 7 8 9 10
 do
-    python train_pos2vec_esbert.py --num_epochs ${epochnum} \
-        --dataset_name news2013 \
-        --max_seq_length 230 \
-        --train_batch_size 32 \
-        --fuse_method selfatt_pool \
-        --time_encoding day
-done
-
-for epochnum in 1 2 3 4 5 6 7 8 9 10
-do
-    python evaluate_entity_models.py \
-        --use_saved_triplets \
-        --model_path ./output/exp_pos2vec_esbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss/model_ep${epochnum}.pt
-done
-
-for epochnum in 1 2 3 4 5 6 7 8 9 10
-do
-    python extract_features.py --dataset_name news2013 \
-    --model_path ./output/exp_pos2vec_esbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss/model_ep${epochnum}.pt
-done
-
-
-#####################################################################
-### T-E-SBERT : News2013 -- offline triplets
-#####################################################################
-export CUDA_VISIBLE_DEVICES=0
-for epochnum in 1 2 3 4 5 6 7 8 9 10
-do
-    python train_pos2vec_esbert.py --num_epochs ${epochnum} \
-        --sample_method offline \
-        --offline_triplet_data_path ./dataset/amt_triples.pickle \
-        --dataset_name news2013 \
-        --max_seq_length 128 \
-        --train_batch_size 16 \
-        --fuse_method selfatt_pool \
-        --time_encoding day
-done
-
-
-
-
-
-
-
-# others
-for epochnum in 1 2 3 4 5 6 7 8 9 10
-do
-    echo "epochnum", ${epochnum}
-    python evaluate_entity_models.py \
-        --use_saved_triplets \
-        --model_path ./output/exp_sbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/model_ep${epochnum}.pt
+    python train_pos2vec_esbert_vaccine.py \
+        --num_epochs ${epochnum} --max_seq_length 128 --train_batch_size 16 \
+        --fuse_method selfatt_pool --time_encoding day \
+        --sample_method train_triplet \
+        --offline_triplet_data_path ./news_data/amt_triplets.pickle \
+        --continue_model_path ./output/exp_pos2vec_esbert_ep2_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss/time_esbert_model_ep2.pt
 done
 
 for epochnum in 1 2 3 4 5 6 7 8 9 10
 do
     echo "epochnum", ${epochnum}
     python evaluate_entity_models.py \
-        --use_saved_triplets \
-        --model_path ./output/exp_esbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/model_ep${epochnum}.pt
+        --use_vaccine_saved_triplets \
+        --model_path ./output/exp_vaccine_pos2vec_esbert_ep${epochnum}_mgn2.0_btch16_norm1.0_max_seq_128_fuse_selfatt_pool_train_triplet_sample_offline_continued_training/time_esbert_model_ep${epochnum}.pt
 done
-
 
 """

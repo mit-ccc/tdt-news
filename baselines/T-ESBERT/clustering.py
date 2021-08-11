@@ -53,12 +53,16 @@ def sim_bof_dc(d0, c1):
     return bof
 
 def model_score(bof, model: model.Model):
+    # print(bof)
+    # print(model.weights)
     return sparse_dotprod(bof, model.weights) - model.bias
+    # TODO: not sure which is right 
+    # return sparse_dotprod(bof, model.weights) - model.bias (- bias for SVM_RANK, but + bias for SVM-triplet)
 
 
 def logits_regression_model_score(bof, model: model.Model):
     """adapt sklearn logistics regression for our framework"""
-    pred = 1 / (1.0 + math.exp(sparse_dotprod(bof, model.weights) + model.bias))
+    pred = 1 / (1.0 + math.exp(sparse_dotprod(bof, model.weights) - model.bias))
     return -1 if pred >= 0.5 else 1
 
 

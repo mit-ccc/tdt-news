@@ -17,10 +17,22 @@ import load_corpora
 import json
 import os
 import argparse
+import pickle 
+
+parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
+parser.add_argument("--weight_model_dir", type=str, default="models/en/4_1491902620.876421_10000.0.model", help="source dir")
+parser.add_argument("--merge_model_dir", type=str, default="models/en/md_3", help="dest dir")
+parser.add_argument("--data_path", type=str, default="./output/exp_pos2vec_esbert_ep2_mgn2.0_btch32_norm1.0_max_seq_230_fuse_additive_random_sample_BatchHardTripletLoss/test_data.pickle", help="dest dir")
+parser.add_argument("--output_filename", type=str, default="./svm_en_data/output/xxx", help="dest dir")
+parser.add_argument("--weight_model_ii_file", type=str, default="./dataset/svm_rank.ii", help="dest dir")
+args = parser.parse_args()
+    
 
 def test(lang, thr, model_path, model_path_ii, merge_model_path=None, output_filename=None):
-    corpus = load_corpora.load(r"dataset/dataset.test.json",
-                               r"dataset/clustering.test.json", set([lang]))
+    # corpus = load_corpora.load(r"dataset/dataset.test.json",
+    #                            r"dataset/clustering.test.json", set([lang]))
+    with open(args.data_path, "rb") as handle:
+        corpus = pickle.load(handle)
     print(lang,"#docs",len(corpus.documents))
     clustering_model = model.Model()
     clustering_model.load(model_path, model_path_ii)
@@ -39,12 +51,12 @@ def test(lang, thr, model_path, model_path_ii, merge_model_path=None, output_fil
         print("\r", i, "/", len(corpus.documents),
               " | #c= ", len(aggregator.clusters), end="")
         # early stop
-        if len(aggregator.clusters) > 1000:
+        if len(aggregator.clusters) > 800:
             break
         aggregator.PutDocument(clustering.Document(d, "???"))
 
     # early stop
-    if len(aggregator.clusters) > 1000:
+    if len(aggregator.clusters) > 800:
         return
 
     with open(output_filename+lang+".out", "w") as fo:
@@ -60,14 +72,9 @@ def test(lang, thr, model_path, model_path_ii, merge_model_path=None, output_fil
 # test('eng', 0.0, r'models/en/4_1491902620.876421_10000.0.model',
 #      r'models/en/example_2017-04-10T193850.536289.ii', r'models/en/md_3')
 def main():
-    parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
-    parser.add_argument("--weight_model_dir", type=str, default="models/en/4_1491902620.876421_10000.0.model", help="source dir")
-    parser.add_argument("--merge_model_dir", type=str, default="models/en/md_3", help="dest dir")
-    parser.add_argument("--output_filename", type=str, default="./svm_en_data/output/xxx", help="dest dir")
-    args = parser.parse_args()
     
     test('eng', 0.0, args.weight_model_dir,
-        r'./dataset/svm_rank.ii', merge_model_path=args.merge_model_dir, output_filename=args.output_filename)
+        args.weight_model_ii_file, merge_model_path=args.merge_model_dir, output_filename=args.output_filename)
 
     # test('spa', 8.18067, r'models/es/2_1492035151.291134_100.0.model',
     #      r'models/es/example_2017-04-12T215308.030747.ii')

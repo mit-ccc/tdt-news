@@ -12,6 +12,15 @@ import torch.optim as optim
 import argparse
 from torch.nn import functional as F
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--input_folder", type=str, default="./output/exp_time_esbert_ep2_mgn2.0_btch8_norm1.0_max_seq_128/time_esbert_model_ep1.pt", help="input_folder")
+parser.add_argument("--c", type=float, default=0.01)
+parser.add_argument("--lr", type=float, default=0.1)
+parser.add_argument("--batchsize", type=int, default=32)
+parser.add_argument("--epoch", type=int, default=30)
+parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
+parser.add_argument("-f")
+args = parser.parse_args()
 
 def get_triplet_pairs(guid2examples):
     """
@@ -40,8 +49,8 @@ def train(X, Y, model, args):
         - SGD / Adam
         - use only 1s as labels or randomly zero half of the labels
     """
-    X = torch.FloatTensor(X)
-    Y = torch.FloatTensor(Y)
+    X = torch.FloatTensor(X).to(args.device)
+    Y = torch.FloatTensor(Y).to(args.device)
     N = len(X)
 
     optimizer = optim.SGD(model.parameters(), lr=args.lr)
@@ -101,7 +110,10 @@ def save_pytorch_model(model, output_file_path):
             out.write(' '.join([str(i), "PLACEHOLDER"]))
             out.write("\n")
         # line 10 -> bias
-        out.write(' '.join([str(model.bias[0].tolist()), "#", "PLACEHOLDER"]))
+        if model.bias:
+            out.write(' '.join([str(model.bias[0].tolist()), "#", "PLACEHOLDER"]))
+        else:
+            out.write(' '.join(['0', "#", "PLACEHOLDER"]))            
         out.write("\n")
         # line 11 -> weights
         line11 = ['1'] + [':'.join([str(a), str(b)]) for a, b in zip(range(1, model.weight.shape[1]+1), model.weight[0].tolist())] + ['#']
@@ -109,16 +121,6 @@ def save_pytorch_model(model, output_file_path):
 
 
 def main():
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input_folder", type=str, default="./output/exp_time_esbert_ep2_mgn2.0_btch8_norm1.0_max_seq_128/time_esbert_model_ep1.pt", help="input_folder")
-    parser.add_argument("--c", type=float, default=0.01)
-    parser.add_argument("--lr", type=float, default=0.1)
-    parser.add_argument("--batchsize", type=int, default=32)
-    parser.add_argument("--epoch", type=int, default=30)
-    parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
-    parser.add_argument("-f")
-    args = parser.parse_args()
 
     # TODO: change path for different training data
     guid_list = []
@@ -138,28 +140,93 @@ def main():
     Y = np.array(y)
 
     # TFIDF without BERT models
-    X_without_bert = X[:, :-1]
-    svm_triplet_train_data, m_labels = prepare_data(X_without_bert, Y, guid_list)
-    for c in [0.01, 0.0001, 0.001, 0.1]:
-        for lr in [0.1, 0.001, 0.001]:
-            model = nn.Linear(12, 1)
-            model.to(args.device)
-            args.c = c
-            args.lr = lr
-            train(svm_triplet_train_data, m_labels, model, args)
-            save_pytorch_model(model, os.path.join(args.input_folder, "models", "weight_model_svm_triplet_tfidf_c{}_lr{}_ep{}.dat".format(c, lr, args.epoch)))
+    # X_without_bert = X[:, :-1]
+    # svm_triplet_train_data, m_labels = prepare_data(X_without_bert, Y, guid_list)
+    # for c in [0.001, 0.01, 0.0001, 0.1]:
+    #     for lr in [0.1, 0.001, 0.001]:
+    #         args.c = c
+    #         args.lr = lr
+
+    #         # bias
+    #         # model = nn.Linear(12, 1).to(args.device)
+    #         # train(svm_triplet_train_data, m_labels, model, args)
+    #         # save_pytorch_model(model, os.path.join(args.input_folder, "models", "weight_model_svm_triplet_tfidf_c{}_lr{}_ep{}.dat".format(c, lr, args.epoch)))
+
+    #         # without bias
+    #         model = nn.Linear(12, 1, bias=False).to(args.device)
+    #         train(svm_triplet_train_data, m_labels, model, args)
+    #         save_pytorch_model(model, os.path.join(args.input_folder, "models", "weight_model_svm_triplet_tfidf_c{}_lr{}_ep{}_no_bias.dat".format(c, lr, args.epoch)))
 
 
     # TFIDF + BERT models
-    svm_triplet_train_data, m_labels = prepare_data(X, Y, guid_list)
+    # svm_triplet_train_data, m_labels = prepare_data(X, Y, guid_list)
+    # for c in [0.001, 0.01, 0.0001, 0.1]:
+    #     for lr in [0.1, 0.001, 0.001]:
+    #         args.c = c
+    #         args.lr = lr
+
+    #         # bias
+    #         # model = nn.Linear(13, 1)
+    #         # model.to(args.device)
+    #         # train(svm_triplet_train_data, m_labels, model, args)
+    #         # save_pytorch_model(model, os.path.join(args.input_folder, "models", "weight_model_svm_triplet_tfidf_bert_c{}_lr{}_ep{}.dat".format(c, lr, args.epoch)))
+
+    #         # no bias
+    #         model = nn.Linear(13, 1, bias=False)
+    #         model.to(args.device)
+    #         train(svm_triplet_train_data, m_labels, model, args)
+    #         save_pytorch_model(model, os.path.join(args.input_folder, "models", "weight_model_svm_triplet_tfidf_bert_c{}_lr{}_ep{}_no_bias.dat".format(c, lr, args.epoch)))
+
+
+    # ONLY BERT
+    # BERT_X = X[:, -1:]
+    # svm_triplet_train_data, m_labels = prepare_data(BERT_X, Y, guid_list)
+    # for c in [0.01, 0.0001, 0.001, 0.1]:
+    #     for lr in [0.1, 0.001, 0.001]:
+    #         model = nn.Linear(1, 1)
+    #         model.to(args.device)
+    #         args.c = c
+    #         args.lr = lr
+    #         train(svm_triplet_train_data, m_labels, model, args)
+    #         save_pytorch_model(model, os.path.join(args.input_folder, "models", "weight_model_svm_triplet_pure_bert_c{}_lr{}_ep{}.dat".format(c, lr, args.epoch)))
+
+    # BERT + TFIDF - TIME
+    X_selected = X[:, [0, 1, 2, 3, 4, 5, 9, 10, 11, 12]]
+    svm_triplet_train_data, m_labels = prepare_data(X_selected, Y, guid_list)
     for c in [0.01, 0.0001, 0.001, 0.1]:
         for lr in [0.1, 0.001, 0.001]:
-            model = nn.Linear(13, 1)
+            model = nn.Linear(10, 1)
             model.to(args.device)
             args.c = c
             args.lr = lr
             train(svm_triplet_train_data, m_labels, model, args)
-            save_pytorch_model(model, os.path.join(args.input_folder, "models", "weight_model_svm_triplet_tfidf_bert_c{}_lr{}_ep{}.dat".format(c, lr, args.epoch)))
+            save_pytorch_model(model, os.path.join(args.input_folder, "models", "weight_model_svm_triplet_bert_ablate_time_c{}_lr{}_ep{}.dat".format(c, lr, args.epoch)))
+
+            # no bias
+            model = nn.Linear(10, 1, bias=False)
+            model.to(args.device)
+            train(svm_triplet_train_data, m_labels, model, args)
+            save_pytorch_model(model, os.path.join(args.input_folder, "models", "weight_model_svm_triplet_bert_ablate_time_c{}_lr{}_ep{}_no_bias.dat".format(c, lr, args.epoch)))
+
+
+    # # BERT - TFIDF + TIME
+    # X_selected = X[:, [6, 7, 8, 12]]
+    # svm_triplet_train_data, m_labels = prepare_data(X_selected, Y, guid_list)
+    # for c in [0.01, 0.0001, 0.001, 0.1]:
+    #     for lr in [0.1, 0.001, 0.001]:
+    #         model = nn.Linear(4, 1)
+    #         model.to(args.device)
+    #         args.c = c
+    #         args.lr = lr
+    #         train(svm_triplet_train_data, m_labels, model, args)
+    #         save_pytorch_model(model, os.path.join(args.input_folder, "models", "weight_model_svm_triplet_bert_ablate_tfidf_c{}_lr{}_ep{}.dat".format(c, lr, args.epoch)))
+
+    #         # no bias
+    #         model = nn.Linear(4, 1, bias=False)
+    #         model.to(args.device)
+    #         train(svm_triplet_train_data, m_labels, model, args)
+    #         save_pytorch_model(model, os.path.join(args.input_folder, "models", "weight_model_svm_triplet_bert_ablate_tfidf_c{}_lr{}_ep{}_no_bias.dat".format(c, lr, args.epoch)))
+
 
 
 if __name__ == "__main__":

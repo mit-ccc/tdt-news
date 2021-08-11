@@ -64,7 +64,7 @@ def main():
             # add each document to clusters according to their gold cluster labels
             cluster_id = sort_document['cluster']
             bofs, pos_example_idx, has_cluster_match = clustersAgg.PutDocument(Document(sort_document, "???"), cluster_id)
-            bofs_tokens_all = [b["bert_sent_embeds"] for b in bofs]
+            bofs_tokens_all = [b["Tokens_all"] for b in bofs]
             idx_top20 = list(np.argsort(bofs_tokens_all)[-21:][::-1]) # pick top 21
             
             # negative candidates (removing the gold one)

@@ -84,3 +84,50 @@ def sum_sparse(a, b, amult=1, bmult=1):
 
 def trim_sparse(a, topn=100):
     return sorted(a, key=lambda x: x[1], reverse=True)[:topn]
+
+
+# utils for training and evaluate BERT models
+# mimic the corpus class as the News dataset (for vaccine data)
+class CorpusClass:
+    def __init__(self, documents):
+        self.documents = documents
+
+from collections import OrderedDict, defaultdict
+from typing import List, Dict, Tuple, Iterable, Type, Union, Callable
+import torch
+from torch import nn, Tensor, device
+
+class InputExample:
+    """
+    Structure for one input example with texts, the label and a unique id
+    """
+    def __init__(self, 
+                 guid: str = '', 
+                 texts: List[str] = None,  
+                 label: Union[int, float] = 0, 
+                 entities: List = None,
+                 times: List = None
+                ):
+        """
+        Creates one InputExample with the given texts, guid and label
+        :param guid
+            id for the example
+        :param texts
+            the texts for the example. Note, str.strip() is called on the texts
+        :param label
+            the label for the example
+        """
+        self.guid = guid
+        self.texts = texts
+        self.label = label
+        self.entities = entities
+        self.times = times
+
+    def __str__(self):
+        return "<InputExample> label: {}, texts: {}".format(str(self.label), "; ".join(self.texts[:10]))
+
+def cosine_distance(embeddings1, embeddings2):
+    """
+    Compute the 2D matrix of cosine distances (1-cosine_similarity) between all embeddings.
+    """
+    return 1 - nn.CosineSimilarity(dim=1, eps=1e-6)(embeddings1, embeddings2)
