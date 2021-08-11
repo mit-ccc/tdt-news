@@ -4,30 +4,6 @@
 
 ## Getting started
 
-
-### install packages 
-
-- install [svm_rank](https://www.cs.cornell.edu/people/tj/svm_light/svm_rank.html) in this directory
-- install the following packages
-
-```The following versions are important
-pip install transformers==3.5.0
-pip install torch==1.6.0
-pip install -U liblinear-official
-pip install smote_variants
-pip install imbalanced_databases
-```
-
-
-### download News2013 data and pre-trained BERT model
-
-- download raw data: `sh download_data.sh`
-- download processed data in pickle format: `train_dev_data.pickle` and `test_data.pickle` [here](https://drive.google.com/drive/u/1/folders/1JCm2S9euC2AhyP9_IFcnMmUZN3tGG9nF) and put into `./dataset/`
-    - NOTE: you can check 'preprocessing/extract-entities.ipynb' to see how entities are extracted with spacy
-- download pre-trained sBERT model to `pretrained_bert` folder and convert its format to our model's format: `python download_pretrained_bert.py`
-    - NOTE: we use "bert-base-nli-stsb-mean-tokens" BERT in our experiments
-
-
 ### docker environment (for Hang)
 
 ```enter my docker environment
@@ -37,6 +13,34 @@ sudo -iu hjian42
 cd /mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/
 export CUDA_VISIBLE_DEVICES=5
 ```
+
+### install packages 
+
+- install [svm_rank](https://www.cs.cornell.edu/people/tj/svm_light/svm_rank.html) in this directory
+- install the following packages
+
+```The following versions are important
+pip install -U sentence-transformers
+pip install transformers==3.5.0
+pip install torch==1.6.0
+pip install -U liblinear-official
+pip install smote_variants
+pip install imbalanced_databases
+```
+
+### download pre-trained BERT model
+
+- download pre-trained sBERT model to `pretrained_bert` folder and convert its format to our model's format: `python download_pretrained_bert.py`
+    - `mkdir ./pretrained_bert/exp_sbert_pretrained_max_seq_128`
+    - `mv ./pretrained_bert/SBERT-base-nli-stsb-mean-tokens.pt ./pretrained_bert/exp_sbert_pretrained_max_seq_128/`
+    - NOTE: we use "bert-base-nli-stsb-mean-tokens" BERT in our experiments
+
+### download News2013 data
+
+- download raw data: `sh download_data.sh` (stored in `./dataset/`)
+- download processed data in pickle format: `train_dev.pickle` and `test.pickle` [here](https://drive.google.com/drive/u/1/folders/1JCm2S9euC2AhyP9_IFcnMmUZN3tGG9nF) and put into `./dataset/`
+    - NOTE: you can check 'preprocessing/extract-entities.ipynb' to see how entities are extracted with spacy
+
 
 ## BERT finetuning + retrospective TDT 
 
