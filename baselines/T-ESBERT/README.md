@@ -18,13 +18,14 @@ pip install smote_variants
 pip install imbalanced_databases
 ```
 
-### download data
+
+### download News2013 data and pre-trained BERT model
 
 - download raw data: `sh download_data.sh`
-- download processed data in pickle format: `train_dev_data.pickle` and `test_data.pickle` [here](https://drive.google.com/drive/u/1/folders/1JCm2S9euC2AhyP9_IFcnMmUZN3tGG9nF)
-    - you can check 'preprocessing/extract-entities.ipynb' to see how entities are extracted with spacy
+- download processed data in pickle format: `train_dev_data.pickle` and `test_data.pickle` [here](https://drive.google.com/drive/u/1/folders/1JCm2S9euC2AhyP9_IFcnMmUZN3tGG9nF) and put into `./dataset/`
+    - NOTE: you can check 'preprocessing/extract-entities.ipynb' to see how entities are extracted with spacy
 - download pre-trained sBERT model to `pretrained_bert` folder and convert its format to our model's format: `python download_pretrained_bert.py`
-    - we use "bert-base-nli-stsb-mean-tokens" BERT in our experiments
+    - NOTE: we use "bert-base-nli-stsb-mean-tokens" BERT in our experiments
 
 
 ### docker environment (for Hang)
