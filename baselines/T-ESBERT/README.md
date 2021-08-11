@@ -30,7 +30,8 @@ pip install imbalanced_databases
 
 ### download pre-trained BERT model
 
-- download pre-trained sBERT model to `pretrained_bert` folder and convert its format to our model's format: `python download_pretrained_bert.py`
+- download pre-trained sBERT model to `pretrained_bert` folder and convert its format to our model's format: 
+    - `python preprocessing/download_pretrained_bert.py`
     - `mkdir ./pretrained_bert/exp_sbert_pretrained_max_seq_128`
     - `mv ./pretrained_bert/SBERT-base-nli-stsb-mean-tokens.pt ./pretrained_bert/exp_sbert_pretrained_max_seq_128/`
     - NOTE: we use "bert-base-nli-stsb-mean-tokens" BERT in our experiments
@@ -44,29 +45,11 @@ pip install imbalanced_databases
 
 ## BERT finetuning + retrospective TDT 
 
-- check `sh train_news2013.sh`
+- check `sh bash_scripts/train_news2013_offline.sh`
 
 
+## Online TDT Task 
 
+- after bert finetuning is done as shown above, run the following to get online results:
+    - `sh bash_scripts/train_news2013_online.sh`
 
-## Online TDT Task (TO BE UPDATED)
-- coming soon
-
-## Finetune BERT embeddings (online sampling) on the News dataset [IGNORE, TO BE UPDATED]
-
-1. run `sh train.sh` to finetune BERT embeddings in 4 settings:
-    - finetune BERT models (sBERT, E-sBERT, T-E-sBERT, T-E-sBERT with frozen Date2vec module)
-    - evaluate BERT on the EventSim Task
-
-2. run `sh train_offline.sh`
-    - TODO: fix the bug for sBERT (training time too long)
-    - TODO: make sBERT and T-E-sBERT share the same evaluation code
-
-
-## Tune the TDT pipeline with the BERT embeddings [IGNORE, TO BE UPDATED]
-
-1. `sh tune_pipeline.sh` to do the following:
-    - extract BERT features from models
-    - generate SVM data
-    - train SVM models
-    - tune the clustering algorithm
