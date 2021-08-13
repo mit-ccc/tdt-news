@@ -1,10 +1,12 @@
 import hdbscan
-import os
+import os, sys
+sys.path.insert(0,'..')
 import bcubed
 import torch
 import pickle
-import json, load_corpora, clustering, os
-from clustering import *
+import json, load_corpora
+# import clustering
+# from clustering import *
 import numpy as np
 from glob import glob
 import argparse
