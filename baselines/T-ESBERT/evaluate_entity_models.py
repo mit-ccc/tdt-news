@@ -16,14 +16,10 @@ elif "exp_pos2vec_esbert" in args.model_path:
     model_type = 'pos2vec_esbert'
     from train_pos2vec_esbert import *
     # from train_pos2vec_esbert_vaccine import * #HACK
-    if "time_hour" in args.model_path:
-        entity_transformer.time_encoding = "hour"
     entity_transformer.split = "test"
 elif "exp_vaccine_pos2vec_esbert" in args.model_path:
     model_type = 'pos2vec_esbert_vaccine'
     from train_pos2vec_esbert_vaccine import *
-    if "time_hour" in args.model_path:
-        entity_transformer.time_encoding = "hour"
     entity_transformer.split = "test"
 elif "exp_learned_pos2vec_esbert" in args.model_path:
     model_type = 'learned_pos2vec_esbert'
