@@ -31,7 +31,7 @@ pip install imbalanced_databases
 ### download pre-trained BERT model
 
 - download pre-trained sBERT model to `pretrained_bert` folder and convert its format to our model's format: 
-    - `python preprocessing/download_pretrained_bert.py`
+    - `python download_pretrained_bert.py`
     - `mkdir ./pretrained_bert/exp_sbert_pretrained_max_seq_128`
     - `mv ./pretrained_bert/SBERT-base-nli-stsb-mean-tokens.pt ./pretrained_bert/exp_sbert_pretrained_max_seq_128/`
     - NOTE: we use "bert-base-nli-stsb-mean-tokens" BERT in our experiments
