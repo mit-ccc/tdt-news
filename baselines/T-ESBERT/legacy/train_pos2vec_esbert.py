@@ -1,5 +1,5 @@
 """
-train learned-PE-E-SBERT
+train sin-PE-E-SBERT
 """
 import json, random, logging, os, shutil
 import math, pickle, queue
@@ -157,9 +157,9 @@ class BatchOfflineTripletLoss(nn.Module):
         return triplet_loss
 
 
-#############################
-#### Learned Time ESBERT ######
-#############################
+#######################
+#### Time ESBERT ######
+#######################
 class BertMeanPooler(nn.Module):
     def __init__(self, hidden_size):
         super().__init__()
@@ -354,7 +354,6 @@ def train(loss_model, dataloader, epochs=2, train_batch_size=2, warmup_steps=100
 
 
 class pos2vec_model(nn.Module):
-    """sin-PE time module"""
     def __init__(self, model_path='./dataset/pos2vec_embed_size768_time_steps_1024.pt'):
         super(pos2vec_model, self).__init__()
         self.pos2vec_mat = torch.load(model_path).cuda()
@@ -362,17 +361,6 @@ class pos2vec_model(nn.Module):
     def forward(self, x):
         x = x.flatten().long()
         return self.pos2vec_mat[x]
-
-
-class learned_pe_model(nn.Module):
-    """learned-PE time module"""
-    def __init__(self, model_path=None):
-        super(learned_pe_model, self).__init__()
-        self.pos2vec_mat = nn.Embedding(650, 768).cuda()
-    
-    def forward(self, x):
-        x = x.flatten().long()
-        return self.pos2vec_mat(x)
 
 
 def compute_time_stamp(string):
@@ -400,7 +388,7 @@ def compute_time_stamp(string):
 
 
 # global variable
-entity_transformer = EntityTransformer("./pretrained_bert/0_Transformer/")
+entity_transformer = EntityTransformer("/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/pretrained_bert/0_Transformer/")
 entity_transformer.split = "train"
 entity_transformer.time_encoding = "day"
 
@@ -418,8 +406,6 @@ def main():
     parser.add_argument("--fuse_method", type=str, default="selfatt_pool", help="dest dir")
     parser.add_argument("--sample_method", type=str, default="random", help="dest dir")
     parser.add_argument("--loss_function", type=str, default="BatchHardTripletLoss", help="dest dir")
-
-    parser.add_argument("--time_module", type=str, default="sinPE", help="dest dir")
     parser.add_argument("--freeze_time_module", type=int, default=0, help="max_seq_length")
     parser.add_argument("--offline_triplet_data_path", type=str, default="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/output/exp_time_esbert_ep3_mgn2.0_btch64_norm1.0_max_seq_128_fuse_selfatt_pool_random_sample_BatchHardTripletLoss/train_dev_offline_triplets.pickle", help="dest dir")
     parser.add_argument("--continue_model_path", type=str, default=None, help="dest dir")
@@ -445,10 +431,7 @@ def main():
     print("Running with split {};time_encoding {}".format(entity_transformer.split, entity_transformer.time_encoding))
     # date2vec_model = Date2VecConvert(model_path="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/Date2Vec/d2v_model/d2v_98291_17.169918439404636.pth")
     
-    if args.time_module == "sin_PE":
-        time_position_model = pos2vec_model(model_path='./dataset/pos2vec_embed_size768_time_steps_1024.pt')
-    elif args.time_module == "learned_PE":
-        time_position_model = learned_pe_model(model_path=None)
+    time_position_model = pos2vec_model(model_path='./dataset/pos2vec_embed_size768_time_steps_1024.pt')
    
     print("finished loading time model based on time position embedding")
 
@@ -516,11 +499,9 @@ def main():
     # if args.freeze_time_module:
     #     folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}_time_frozen".format("exp_pos2vec_esbert", num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
     # else:
-
-    exp_model = "exp_pos2vec_esbert" if args.time_module == "sin_PE" else "exp_learned_pe_esbert"
-    folder_name = "output/{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}".format(exp_model, args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
+    folder_name = "output/{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}".format("exp_pos2vec_esbert", args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
     if args.continue_model_path:
-        folder_name = "output/{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}_time_{}_continued_training".format(exp_model, args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function, args.time_encoding)
+        folder_name = "output/{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}_time_{}_continued_training".format("exp_pos2vec_esbert", args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function, args.time_encoding)
     os.makedirs(folder_name, exist_ok=True)
     train(loss_model, 
         train_dataloader,

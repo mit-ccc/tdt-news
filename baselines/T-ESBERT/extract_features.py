@@ -1,5 +1,4 @@
-import re
-import argparse
+import re, argparse, sys
 from utils import CorpusClass, InputExample
 
 parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
@@ -19,16 +18,17 @@ elif "exp_pos2vec_esbert" in args.model_path:
     input_folder = os.path.dirname(args.model_path)
     if "time_hour" in args.model_path:
         entity_transformer.time_encoding = "hour"
-elif "exp_learned_pos2vec_esbert" in args.model_path:
+elif "exp_learned_pe_esbert" in args.model_path:
     model_type = 'learned_pos2vec_esbert'
     from train_learned_pos2vec_esbert import *
     model = torch.load(args.model_path)
     input_folder = os.path.dirname(args.model_path)
     if "time_hour" in args.model_path:
         entity_transformer.time_encoding = "hour"
-elif "exp_time_esbert" in args.model_path:
+elif "date2vec" in args.model_path:
+    sys.path.insert(0,"./legacy/")
     model_type = 'tesbert' 
-    from train_time_esbert import *
+    from legacy.train_date2vec_esbert import *
     model = torch.load(args.model_path)
     input_folder = os.path.dirname(args.model_path)
 elif 'exp_esbert' in args.model_path:
@@ -178,11 +178,11 @@ def main():
     #     pickle.dump(test_corpus, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     if args.dataset_name == "news2013":
-        with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/dataset/test.pickle', 'rb') as handle:
+        with open('./dataset/test.pickle', 'rb') as handle:
             test_corpus = pickle.load(handle)
     elif args.dataset_name == "vaccine":
         # vaccine data do not have a test split
-        with open('/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/news_data/train_dev_entity.pickle', 'rb') as handle:
+        with open('./news_data/train_dev_entity.pickle', 'rb') as handle:
             test_corpus = pickle.load(handle)
     entity_transformer.split = "test" #HACK: use the earliest time in test files as the anchoring time
     print("finished loading test pickle files")
