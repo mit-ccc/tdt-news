@@ -18,9 +18,19 @@ elif "exp_pos2vec_esbert" in args.model_path:
     input_folder = os.path.dirname(args.model_path)
     if "time_hour" in args.model_path:
         entity_transformer.time_encoding = "hour"
+    elif "time_2day" in args.model_path:
+        entity_transformer.time_encoding = "2day"
+    elif "time_3day" in args.model_path:
+        entity_transformer.time_encoding = "3day"
+    elif "time_4day" in args.model_path:
+        entity_transformer.time_encoding = "4day"
+    elif "time_week" in args.model_path:
+        entity_transformer.time_encoding = "week"
+    elif "time_month" in args.model_path:
+        entity_transformer.time_encoding = "month"
 elif "exp_learned_pe_esbert" in args.model_path:
     model_type = 'learned_pos2vec_esbert'
-    from train_learned_pos2vec_esbert import *
+    from train_pos2vec_esbert import *
     model = torch.load(args.model_path)
     input_folder = os.path.dirname(args.model_path)
     if "time_hour" in args.model_path:
@@ -177,13 +187,36 @@ def main():
     # with open(os.path.join(input_folder, "test_data_reanchoring.pickle"), 'wb') as handle:
     #     pickle.dump(test_corpus, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+    # test
     if args.dataset_name == "news2013":
+        with open('./dataset/train_dev.pickle', 'rb') as handle:
+            train_dev_corpus = pickle.load(handle)
         with open('./dataset/test.pickle', 'rb') as handle:
             test_corpus = pickle.load(handle)
     elif args.dataset_name == "vaccine":
         # vaccine data do not have a test split
         with open('./news_data/train_dev_entity.pickle', 'rb') as handle:
             test_corpus = pickle.load(handle)
+
+    # train 
+    entity_transformer.split = "train" #HACK: use the earliest time in train files as the anchoring time
+    print("finished loading training pickle files")
+    train_examples = [InputExample(texts=d['full_text'], 
+                            label=d['cluster'],
+                            guid=d['id'], 
+                            entities=d['bert_entities'], 
+                            times=d['date']) for d in train_dev_corpus.documents]
+    train_dataloader = DataLoader(train_examples, shuffle=False, batch_size=16)
+    train_features = extract_features(train_dataloader, model)
+    torch.save(train_features, os.path.join(input_folder, "train_sent_embeds.pt"))
+    print("finished saving train features")
+    train_dense_feats = torch.load(os.path.join(input_folder, "train_sent_embeds.pt"))
+    print('train_dense_feats', train_dense_feats.shape)
+    train_dev_corpus = add_bert_features(train_dev_corpus, train_dense_feats)
+    with open(os.path.join(input_folder, "train_dev_bert.pickle"), 'wb') as handle:
+        pickle.dump(train_dev_corpus, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    # test
     entity_transformer.split = "test" #HACK: use the earliest time in test files as the anchoring time
     print("finished loading test pickle files")
     test_examples = [InputExample(texts=d['full_text'], 

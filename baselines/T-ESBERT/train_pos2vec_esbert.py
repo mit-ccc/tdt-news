@@ -393,6 +393,18 @@ def compute_time_stamp(string):
 
     if entity_transformer.time_encoding == "day":
         return [delta.days]
+    elif entity_transformer.time_encoding == "hour":
+        return [int(delta.seconds // 3600) + delta.days * 24]
+    elif entity_transformer.time_encoding == "2day":
+        return [int(delta.days/2)]
+    elif entity_transformer.time_encoding == "3day":
+        return [int(delta.days/3)]
+    elif entity_transformer.time_encoding == "4day":
+        return [int(delta.days/4)]
+    elif entity_transformer.time_encoding == "week":
+        return [int(delta.days/7)]
+    elif entity_transformer.time_encoding == "month":
+        return [int(delta.days/30)]
     else:
         print("entity_transformer.time_encoding IS WRONG")
     # else: # if nothing happens
@@ -400,7 +412,7 @@ def compute_time_stamp(string):
 
 
 # global variable
-entity_transformer = EntityTransformer("./pretrained_bert/0_Transformer/")
+entity_transformer = EntityTransformer("/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/pretrained_bert/0_Transformer/")
 entity_transformer.split = "train"
 entity_transformer.time_encoding = "day"
 
@@ -414,15 +426,22 @@ def main():
     parser.add_argument("--margin", type=float, default=2.0, help="margin")
     parser.add_argument("--max_grad_norm", type=float, default=1.0, help="max_grad_norm")
     parser.add_argument("--max_seq_length", type=int, default=512, help="max_seq_length")
-    parser.add_argument("--time_encoding", type=str, default="day", help="dest dir")
     parser.add_argument("--fuse_method", type=str, default="selfatt_pool", help="dest dir")
-    parser.add_argument("--sample_method", type=str, default="random", help="dest dir")
     parser.add_argument("--loss_function", type=str, default="BatchHardTripletLoss", help="dest dir")
 
-    parser.add_argument("--time_module", type=str, default="sinPE", help="dest dir")
+    # time 
+    parser.add_argument("--time_module", type=str, default="sin_PE", help="dest dir")
     parser.add_argument("--freeze_time_module", type=int, default=0, help="max_seq_length")
-    parser.add_argument("--offline_triplet_data_path", type=str, default="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/output/exp_time_esbert_ep3_mgn2.0_btch64_norm1.0_max_seq_128_fuse_selfatt_pool_random_sample_BatchHardTripletLoss/train_dev_offline_triplets.pickle", help="dest dir")
+    parser.add_argument("--time_encoding", type=str, default="day", help="dest dir")
+    
+    # sampling
+    parser.add_argument("--sample_method", type=str, default="random", help="dest dir")
+    parser.add_argument("--offline_triplet_mode", type=str, default=None, help="dest dir") # EPEN_triplets EPHN_triplets HPHN_triplets HPEN_triplets
+    parser.add_argument("--offline_triplet_data_path", type=str, default=None, help="dest dir")
+    
+    # continue training
     parser.add_argument("--continue_model_path", type=str, default=None, help="dest dir")
+
     args = parser.parse_args()
 
     if args.dataset_name == "vaccine":
@@ -446,7 +465,10 @@ def main():
     # date2vec_model = Date2VecConvert(model_path="/mas/u/hjian42/tdt-twitter/baselines/T-ESBERT/Date2Vec/d2v_model/d2v_98291_17.169918439404636.pth")
     
     if args.time_module == "sin_PE":
-        time_position_model = pos2vec_model(model_path='./dataset/pos2vec_embed_size768_time_steps_1024.pt')
+        if args.time_encoding == "hour":
+            time_position_model = pos2vec_model(model_path='./dataset/pos2vec_embed_size768_time_steps_14880.pt')
+        else:
+            time_position_model = pos2vec_model(model_path='./dataset/pos2vec_embed_size768_time_steps_1024.pt')
     elif args.time_module == "learned_PE":
         time_position_model = learned_pe_model(model_path=None)
    
@@ -489,7 +511,7 @@ def main():
         args.loss_function = "offline"
         with open(args.offline_triplet_data_path, 'rb') as handle:
             train_offline_triplets_idxes = pickle.load(handle)
-        train_dev_triplets = triplets_from_offline_sampling(train_examples, train_offline_triplets_idxes, mode="train_triplet")
+        train_dev_triplets = triplets_from_offline_sampling(train_examples, train_offline_triplets_idxes, mode=args.offline_triplet_mode)
         train_dataloader = DataLoader(train_dev_triplets, shuffle=True, batch_size=train_batch_size)
         train_dataloader.collate_fn = triplet_batching_collate
     
@@ -513,14 +535,15 @@ def main():
         loss_model = BatchOfflineTripletLoss(time_esbert, distance_metric=cosine_distance, margin=margin)
 
     warmup_steps = math.ceil(len(train_examples)*num_epochs/train_batch_size*0.1) #10% of train data for warm-up
-    # if args.freeze_time_module:
-    #     folder_name = "output/{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}_time_frozen".format("exp_pos2vec_esbert", num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
-    # else:
 
     exp_model = "exp_pos2vec_esbert" if args.time_module == "sin_PE" else "exp_learned_pe_esbert"
     folder_name = "output/{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}".format(exp_model, args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function)
+    if args.sample_method == 'offline':
+        folder_name = "{}_{}".format(folder_name, args.offline_triplet_mode)
+    if args.time_encoding != "day":
+        folder_name = "{}_time_{}".format(folder_name, args.time_encoding)
     if args.continue_model_path:
-        folder_name = "output/{}_{}_ep{}_mgn{}_btch{}_norm{}_max_seq_{}_fuse_{}_{}_sample_{}_time_{}_continued_training".format(exp_model, args.dataset_name, num_epochs, margin, train_batch_size, max_grad_norm, args.max_seq_length, args.fuse_method, args.sample_method, args.loss_function, args.time_encoding)
+        folder_name = "{}_continued_training".format(folder_name)
     os.makedirs(folder_name, exist_ok=True)
     train(loss_model, 
         train_dataloader,
