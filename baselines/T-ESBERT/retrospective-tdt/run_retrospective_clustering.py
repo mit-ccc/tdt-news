@@ -83,7 +83,7 @@ elif args.features == "bert_tfidf":
 
 
 if args.cluster_algorithm == "kmeans":
-    results = KMeans(n_clusters=33, random_state=args.random_seed).fit(X).labels_
+    results = KMeans(n_clusters=args.gold_cluster_num, random_state=args.random_seed).fit(X).labels_
 elif args.cluster_algorithm == "agg_ward":
     results = AgglomerativeClustering(n_clusters=args.gold_cluster_num, linkage="ward").fit(X).labels_
 elif args.cluster_algorithm == "agg_complete":
