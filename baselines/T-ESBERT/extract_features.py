@@ -28,6 +28,10 @@ elif "exp_pos2vec_esbert" in args.model_path:
         entity_transformer.time_encoding = "week"
     elif "time_month" in args.model_path:
         entity_transformer.time_encoding = "month"
+    elif entity_transformer.time_encoding == "40day":
+        entity_transformer.time_encoding = "40day"
+    elif entity_transformer.time_encoding == "2month":
+        entity_transformer.time_encoding = "2month"
 elif "exp_learned_pe_esbert" in args.model_path:
     model_type = 'learned_pos2vec_esbert'
     from train_pos2vec_esbert import *
@@ -192,6 +196,11 @@ def main():
         with open('./dataset/train_dev.pickle', 'rb') as handle:
             train_dev_corpus = pickle.load(handle)
         with open('./dataset/test.pickle', 'rb') as handle:
+            test_corpus = pickle.load(handle)
+    elif args.dataset_name == "tdt4": # TDT4
+        with open('./tdt4/train_dev_final.pickle', 'rb') as handle:
+            train_dev_corpus = pickle.load(handle)
+        with open('./tdt4/test_final.pickle', 'rb') as handle:
             test_corpus = pickle.load(handle)
     elif args.dataset_name == "vaccine":
         # vaccine data do not have a test split

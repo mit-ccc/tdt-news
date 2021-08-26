@@ -404,6 +404,9 @@ def main():
     if args.dataset_name == "vaccine":
         with open('../news_data/train_dev_entity.pickle', 'rb') as handle:
             train_corpus = pickle.load(handle)
+    elif args.dataset_name == "tdt4": # default TDT4
+        with open('../tdt4/train_dev_final.pickle', 'rb') as handle:
+            train_corpus = pickle.load(handle)
     elif args.dataset_name == "news2013": # default News dataset
         with open('../dataset/train_dev.pickle', 'rb') as handle:
             train_corpus = pickle.load(handle)

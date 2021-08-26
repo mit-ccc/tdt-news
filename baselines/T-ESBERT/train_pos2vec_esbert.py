@@ -383,9 +383,11 @@ def compute_time_stamp(string):
     """
     # the start date is fixed
     if entity_transformer.split == "train":
-        anchor_date = datetime.strptime("2013-12-18 12:27:00", "%Y-%m-%d %H:%M:%S")
+        # anchor_date = datetime.strptime("2013-12-18 12:27:00", "%Y-%m-%d %H:%M:%S")
+        anchor_date = datetime.strptime("2000-10-01 00:00:00", "%Y-%m-%d %H:%M:%S")
     elif entity_transformer.split == "test":
-        anchor_date = datetime.strptime("2014-11-02 21:18:00", "%Y-%m-%d %H:%M:%S")
+        # anchor_date = datetime.strptime("2014-11-02 21:18:00", "%Y-%m-%d %H:%M:%S")
+        anchor_date = datetime.strptime("2000-10-01 00:00:00", "%Y-%m-%d %H:%M:%S")
     else:
         print("entity_transformer.split IS WRONG")
     date_obj = datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
@@ -405,6 +407,10 @@ def compute_time_stamp(string):
         return [int(delta.days/7)]
     elif entity_transformer.time_encoding == "month":
         return [int(delta.days/30)]
+    elif entity_transformer.time_encoding == "40day":
+        return [int(delta.days/40)]
+    elif entity_transformer.time_encoding == "2month":
+        return [int(delta.days/60)]
     else:
         print("entity_transformer.time_encoding IS WRONG")
     # else: # if nothing happens
@@ -446,6 +452,9 @@ def main():
 
     if args.dataset_name == "vaccine":
         with open('./news_data/train_dev_entity.pickle', 'rb') as handle:
+            train_corpus = pickle.load(handle)
+    elif args.dataset_name == "tdt4": # default News dataset
+        with open('./tdt4/train_dev_final.pickle', 'rb') as handle:
             train_corpus = pickle.load(handle)
     elif args.dataset_name == "news2013": # default News dataset
         with open('./dataset/train_dev.pickle', 'rb') as handle:
