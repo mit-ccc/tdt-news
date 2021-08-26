@@ -23,9 +23,11 @@ parser.add_argument("--cluster_algorithm", type=str, default="kmeans", help="inp
 parser.add_argument("--algorithm", type=str, default="best", help="input_folder")
 parser.add_argument("--cluster_selection_epsilon", type=float, default=0.0, help="input_folder")
 parser.add_argument("--min_cluster_size", type=int, default=5)
-parser.add_argument("--min_samples", type=int, default=1)
+parser.add_argument("--min_samples", type=int, default=None)
 parser.add_argument("--random_seed", type=int, default=0)
-parser.add_argument("--reduced_dim_size", type=int, default=1000)
+parser.add_argument("--allow_single_cluster", type=int, default=0)
+parser.add_argument("--reduced_dim_size", type=int, default=10000)
+parser.add_argument("--gold_cluster_num", type=int, default=222)
 
 parser.add_argument("-f")
 args = parser.parse_args()
@@ -48,16 +50,17 @@ def evaluate_clusters(documents, doc2predcluster):
     recall = bcubed.recall(cdict, ldict)
     fscore = bcubed.fscore(precision, recall)
     
-    print("precision: {}; recall: {}; f-1: {}".format(precision, recall, fscore))
+    precision, recall, fscore = 100*float(precision), 100*float(recall), 100*float(fscore)
+    print("precision: {:.2f}; recall: {:.2f}; f-1: {:.2f}".format(precision, recall, fscore))
     return precision, recall, fscore
 
 test_data = os.path.join(args.input_folder, "test_bert.pickle")
 with open(test_data, 'rb') as handle:
     test_corpus = pickle.load(handle)
-test_vectors = torch.load(os.path.join(args.input_folder, "test_sent_embeds.pt"))
 vectorizer = DictVectorizer(sparse=True)
 
 if args.features == "bert":
+    test_vectors = torch.load(os.path.join(args.input_folder, "test_sent_embeds.pt"))
     X = test_vectors
     length = np.sqrt((X**2).sum(axis=1))[:,None]
     X = X / length
@@ -67,32 +70,34 @@ elif args.features == "tfidf":
         del d['bert_sent_embeds']
     test_dict = [nested_to_record(d, sep='_') for d in test_dict]
     X = vectorizer.fit_transform(test_dict)
-    X = Normalizer(norm="l2").fit_transform(X)
-    X = umap.UMAP(metric='cosine', n_components=args.reduced_dim_size).fit_transform(X)
+    X = Normalizer(norm="l2").fit_transform(X).toarray()
+    # X = Normalizer(norm="l2").fit_transform(X)
+    # X = umap.UMAP(metric='cosine', n_components=args.reduced_dim_size).fit_transform(X)
 
 elif args.features == "bert_tfidf":
     test_dict = [dict(d['features']) for d in test_corpus.documents]
     test_dict = [nested_to_record(d, sep='_') for d in test_dict]
     X = vectorizer.fit_transform(test_dict)
-    X = Normalizer(norm="l2").fit_transform(X)
-    X = umap.UMAP(metric='cosine', n_components=args.reduced_dim_size).fit_transform(X)
+    X = Normalizer(norm="l2").fit_transform(X).toarray()
+    # X = umap.UMAP(metric='cosine', n_components=args.reduced_dim_size).fit_transform(X)
 
 
 if args.cluster_algorithm == "kmeans":
-    results = KMeans(n_clusters=222, random_state=args.random_seed).fit(X).labels_
+    results = KMeans(n_clusters=33, random_state=args.random_seed).fit(X).labels_
 elif args.cluster_algorithm == "agg_ward":
-    results = AgglomerativeClustering(n_clusters=222, linkage="ward").fit(X).labels_
+    results = AgglomerativeClustering(n_clusters=args.gold_cluster_num, linkage="ward").fit(X).labels_
 elif args.cluster_algorithm == "agg_complete":
-    results = AgglomerativeClustering(n_clusters=222, linkage="complete").fit(X).labels_
+    results = AgglomerativeClustering(n_clusters=args.gold_cluster_num, linkage="complete").fit(X).labels_
 elif args.cluster_algorithm == "agg_single":
-    results = AgglomerativeClustering(n_clusters=222, linkage="single").fit(X).labels_
+    results = AgglomerativeClustering(n_clusters=args.gold_cluster_num, linkage="single").fit(X).labels_
 elif args.cluster_algorithm == "agg_average":
-    results = AgglomerativeClustering(n_clusters=222, linkage="average").fit(X).labels_
+    results = AgglomerativeClustering(n_clusters=args.gold_cluster_num, linkage="average").fit(X).labels_
 elif args.cluster_algorithm == "hdbscan":
     test_clusterer = hdbscan.HDBSCAN(min_cluster_size=args.min_cluster_size, 
                                     min_samples=args.min_samples,
                                     algorithm=args.algorithm,
                                     cluster_selection_epsilon=args.cluster_selection_epsilon,
+                                    allow_single_cluster=args.allow_single_cluster,
                                     prediction_data=True)
     test_cluster_labels = test_clusterer.fit_predict(X).tolist()
     soft_clusters = [np.argmax(x) for x in hdbscan.all_points_membership_vectors(test_clusterer)]
@@ -144,7 +149,7 @@ do
         echo "T-E-SBERT", ${epochnum}
         python run_retrospective_clustering.py --cluster_algorithm ${algm} \
             --min_cluster_size 7 --min_samples 3 \
-            --input_folder ./output/exp_pos2vec_esbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss
+            --input_folder ../output/exp_pos2vec_esbert_news2013_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss
     done
 done
 

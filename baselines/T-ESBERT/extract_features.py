@@ -197,6 +197,11 @@ def main():
             train_dev_corpus = pickle.load(handle)
         with open('./dataset/test.pickle', 'rb') as handle:
             test_corpus = pickle.load(handle)
+    elif args.dataset_name == "tdt1": # TDT4
+        with open('./tdt_pilot_data/train_dev_final.pickle', 'rb') as handle:
+            train_dev_corpus = pickle.load(handle)
+        with open('./tdt_pilot_data/test_final.pickle', 'rb') as handle:
+            test_corpus = pickle.load(handle)
     elif args.dataset_name == "tdt4": # TDT4
         with open('./tdt4/train_dev_final.pickle', 'rb') as handle:
             train_dev_corpus = pickle.load(handle)
