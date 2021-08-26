@@ -45,6 +45,26 @@ elif "exp_learned_pe_esbert" in args.model_path:
     input_folder = os.path.dirname(args.model_path)
     if "time_hour" in args.model_path:
         entity_transformer.time_encoding = "hour"
+    elif "time_2day" in args.model_path:
+        entity_transformer.time_encoding = "2day"
+    elif "time_3day" in args.model_path:
+        entity_transformer.time_encoding = "3day"
+    elif "time_4day" in args.model_path:
+        entity_transformer.time_encoding = "4day"
+    elif "time_week" in args.model_path:
+        entity_transformer.time_encoding = "week"
+    elif "time_month" in args.model_path:
+        entity_transformer.time_encoding = "month"
+    elif "time_40day" in args.model_path:
+        entity_transformer.time_encoding = "40day"
+    elif "time_2month" in args.model_path:
+        entity_transformer.time_encoding = "2month"
+    elif "time_90day" in args.model_path:
+        entity_transformer.time_encoding = "90day"
+    elif "time_180day" in args.model_path:
+        entity_transformer.time_encoding = "180day"
+    elif "time_year" in args.model_path:
+        entity_transformer.time_encoding = "year"
 elif "date2vec" in args.model_path:
     sys.path.insert(0,"./legacy/")
     model_type = 'tesbert' 
@@ -106,12 +126,13 @@ else:
 def extract_features(dataloader, model):
     sentence_embeddings_list = []
     dataloader.collate_fn = custom_collate_fn
-    for batch in iter(dataloader):
-        # print(batch['input_ids'], batch['input_ids'].shape)
-        output_features = model(batch)
-        sentence_embeddings = output_features['sentence_embedding']
-        sentence_embeddings_list.append(sentence_embeddings.cpu().detach().numpy())
-    sents_embeds = np.concatenate(sentence_embeddings_list, 0)
+    with torch.no_grad():
+        for batch in iter(dataloader):
+            # print(batch['input_ids'], batch['input_ids'].shape)
+            output_features = model(batch)
+            sentence_embeddings = output_features['sentence_embedding']
+            sentence_embeddings_list.append(sentence_embeddings.cpu().detach().numpy())
+        sents_embeds = np.concatenate(sentence_embeddings_list, 0)
     return sents_embeds
 
 
