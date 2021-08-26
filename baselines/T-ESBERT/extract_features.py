@@ -28,10 +28,16 @@ elif "exp_pos2vec_esbert" in args.model_path:
         entity_transformer.time_encoding = "week"
     elif "time_month" in args.model_path:
         entity_transformer.time_encoding = "month"
-    elif entity_transformer.time_encoding == "40day":
+    elif "time_40day" in args.model_path:
         entity_transformer.time_encoding = "40day"
-    elif entity_transformer.time_encoding == "2month":
+    elif "time_2month" in args.model_path:
         entity_transformer.time_encoding = "2month"
+    elif "time_90day" in args.model_path:
+        entity_transformer.time_encoding = "90day"
+    elif "time_180day" in args.model_path:
+        entity_transformer.time_encoding = "180day"
+    elif "time_year" in args.model_path:
+        entity_transformer.time_encoding = "year"
 elif "exp_learned_pe_esbert" in args.model_path:
     model_type = 'learned_pos2vec_esbert'
     from train_pos2vec_esbert import *
