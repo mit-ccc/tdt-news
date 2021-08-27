@@ -2,19 +2,14 @@
 Generate the data used for SVM-rank and SVM-merge
 """
 import pickle
-import sys
-sys.path.insert(0,"../")
 import json, load_corpora, clustering, os
 from clustering import *
 import numpy as np
 import random
 import argparse
-from pathlib import Path
-
 
 parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
 parser.add_argument("--input_folder", type=str, default="./output/exp_time_esbert_ep2_mgn2.0_btch8_norm1.0_max_seq_128", help="input_folder")
-parser.add_argument("--features", type=str, default="tfidf_time", help="input_folder")
 parser.add_argument("-f")
 args = parser.parse_args()
 
@@ -47,15 +42,25 @@ class GoldenAggregator:
         return bofs, pos_example_idx, has_cluster_match
 
 
-def generate_svm_rank_data(input_corpus, output_path, features="tfidf_time"):
+def main():
+     ##############################
+    # data loading
+     ##############################
+    with open(os.path.join(args.input_folder, "train_dev_data.pickle"), 'rb') as handle:
+        train_dev_corpus = pickle.load(handle)
+    with open(os.path.join(args.input_folder, "test_data.pickle"), 'rb') as handle:
+        test_corpus = pickle.load(handle)
 
-    if features == "tfidf_time":
-        feature_list = ['Entities_all', 'Lemmas_all', 'Tokens_all', 'NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS']
+    print('training en',"#docs",len(train_dev_corpus.documents))
+    print('testing en',"#docs",len(test_corpus.documents))
 
+     ##############################
+    # generate data for SVM-rank, save to train_bert_rank.dat
+     ##############################
     clustersAgg = GoldenAggregator()
-    with open(output_path, "w") as out:
+    with open(os.path.join(args.input_folder, "train_svm_rank.dat"), "w") as out:
         # train_dev_corpus is sorted by time
-        for i, sort_document in enumerate(input_corpus.documents):
+        for i, sort_document in enumerate(train_dev_corpus.documents):
             # add each document to clusters according to their gold cluster labels
             cluster_id = sort_document['cluster']
             bofs, pos_example_idx, has_cluster_match = clustersAgg.PutDocument(Document(sort_document, "???"), cluster_id)
@@ -70,7 +75,11 @@ def generate_svm_rank_data(input_corpus, output_path, features="tfidf_time"):
             
             def _concatenate_items(bof, target=0, qid=1):
                 out_items = [str(target), ':'.join(['qid', str(qid)])]
-                for j, key in enumerate(feature_list):
+                for j, key in enumerate(['Entities_all', 'Entities_body', 'Entities_title',
+                            'Lemmas_all', 'Lemmas_body', 'Lemmas_title', 
+                            'NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS',
+                            'Tokens_all', 'Tokens_body', 'Tokens_title', 'bert_sent_embeds'
+                        ]):
                     if key in bof:
                         out_items.append(":".join([str(j+1), str(bof[key])]))
                     else:
@@ -86,17 +95,20 @@ def generate_svm_rank_data(input_corpus, output_path, features="tfidf_time"):
                 out.write(_concatenate_items(neg_bof, target=len(negative_bofs)-j, qid=qid))
                 out.write("\n")
             print(i)
-
-
-def generate_svm_merge_data(input_corpus, output_path, features="tfidf_time"):
-
-    if features == "tfidf_time":
-        feature_list = ['Entities_all','Lemmas_all', 'Tokens_all', 'NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'ZZINVCLUSTER_SIZE', 'ZINV_POOL_SIZE']
     
+    # format training data version without bert feature
+    with open(os.path.join(args.input_folder, "train_svm_rank.dat")) as f, \
+        open(os.path.join(args.input_folder, "train_svm_rank_without_bert.dat"), 'w') as out:
+        for line in f:
+            out.write(" ".join(line.split()[:-1]) + "\n")    
+    
+    ##############################
+    # generate data for SVM-merge
+    ##############################
     clustersAgg = GoldenAggregator()
-    with open(output_path, "w") as out:
-        # input_corpus is sorted by time
-        for i, sort_document in enumerate(input_corpus.documents):
+    with open(os.path.join(args.input_folder, "train_svmlib0.dat"), "w") as out:
+        # train_dev_corpus is sorted by time
+        for i, sort_document in enumerate(train_dev_corpus.documents):
             # add each document to clusters according to their gold cluster labels
             cluster_id = sort_document['cluster']
             bofs, pos_example_idx, has_cluster_match = clustersAgg.PutDocument(Document(sort_document, "???"), cluster_id)
@@ -112,7 +124,11 @@ def generate_svm_merge_data(input_corpus, output_path, features="tfidf_time"):
                 sim_mat = []
                 for bof in bofs:
                     current_row = []
-                    for j, key in enumerate(feature_list):
+                    for j, key in enumerate(['Entities_all', 'Entities_body', 'Entities_title',
+                                            'Lemmas_all', 'Lemmas_body', 'Lemmas_title', 
+                                            'NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'ZZINVCLUSTER_SIZE', 'ZINV_POOL_SIZE',
+                                            'Tokens_all', 'Tokens_body', 'Tokens_title', 
+                                            'bert_sent_embeds']):
                         if key in bof:
                             current_row.append(bof[key])
                         else:
@@ -143,7 +159,7 @@ def generate_svm_merge_data(input_corpus, output_path, features="tfidf_time"):
             1: [], # include into a cluster
             -1: [] # create a cluster
         }
-    with open(output_path) as f:
+    with open(os.path.join(args.input_folder, "train_svmlib0.dat")) as f:
         for line in f:
     #         print(line)
             if line[:2] == "-1": 
@@ -154,38 +170,18 @@ def generate_svm_merge_data(input_corpus, output_path, features="tfidf_time"):
     #     label2sents[-1] = random.sample(label2sents[-1], min(len(label2sents[-1]), len(label2sents[1])))
 
     # sample negative and positive examples to be the same number
-    with open(output_path.replace("train_svmlib_raw.dat", "train_svmlib_balanced.dat"), 'w') as out:
+    with open(os.path.join(args.input_folder, "train_svmlib1.dat"), 'w') as out:
         lines = label2sents[1] + label2sents[-1]
         random.shuffle(lines)
         for line in lines:
             out.write(line)
-
-def main():
-     ##############################
-    # data loading
-     ##############################
-    with open(os.path.join(args.input_folder, "train_dev_bert.pickle"), 'rb') as handle:
-        train_dev_corpus = pickle.load(handle)
-    with open(os.path.join(args.input_folder, "test_bert.pickle"), 'rb') as handle:
-        test_corpus = pickle.load(handle)
-
-    print('training en',"#docs",len(train_dev_corpus.documents))
-    print('testing en',"#docs",len(test_corpus.documents))
-
-    args.output_folder = os.path.join(args.input_folder, args.features)
-    Path(args.output_folder).mkdir(parents=True, exist_ok=True)
     
-    ##############################
-    # generate data for SVM-rank, save to train_bert_rank.dat
-    ##############################
-    output_path = os.path.join(args.output_folder, "train_svm_rank.dat")
-    generate_svm_rank_data(train_dev_corpus, output_path, features=args.features)
-    
-    ##############################
-    # generate data for SVM-merge
-    ##############################
-    output_path2 = os.path.join(args.output_folder, "train_svmlib_raw.dat")
-    generate_svm_merge_data(train_dev_corpus, output_path2, features=args.features)
+    # format training data version without bert feature
+    with open(os.path.join(args.input_folder, "train_svmlib1.dat")) as f, \
+        open(os.path.join(args.input_folder, "train_svmlib1_without_bert.dat"), 'w') as out:
+        for line in f:
+            out.write(" ".join(line.split()[:-1]) + "\n")
+
 
 if __name__ == "__main__":
     main()
