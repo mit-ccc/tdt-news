@@ -10,6 +10,7 @@ import math
 import model
 import pdb
 import datetime
+import numpy as np
 
 
 def sparse_dotprod(fv0, fv1):
@@ -27,6 +28,9 @@ def cosine_bof(d0, d1):
     cosine_bof_v = {}
     for fn, fv0 in d0.items():
         if fn in d1:
+            # handle empty value
+            if (len(fv0) == 0) or (len(d1[fn]) == 0):
+                continue
             fv1 = d1[fn]
             cosine_bof_v[fn] = sparse_dotprod(
                 fv0, fv1) / math.sqrt(sparse_dotprod(fv0, fv0) * sparse_dotprod(fv1, fv1))
@@ -60,10 +64,40 @@ def model_score(bof, model: model.Model):
     # return sparse_dotprod(bof, model.weights) - model.bias (- bias for SVM_RANK, but + bias for SVM-triplet)
 
 
-def logits_regression_model_score(bof, model: model.Model):
+def sklearn_model_score(bof, model: model.Model, model_specs):
     """adapt sklearn logistics regression for our framework"""
-    pred = 1 / (1.0 + math.exp(sparse_dotprod(bof, model.weights) - model.bias))
-    return -1 if pred >= 0.5 else 1
+    features, dataset_name = model_specs.split("-")
+    if features == "tfidf":
+        if "tdt4" in dataset_name:
+            feature_list = ['Entities_all','Lemmas_all', 'Tokens_all', 'ZZINVCLUSTER_SIZE']
+        else:
+            feature_list = ['Entities_all', 'Entities_body', 'Entities_title',
+                            'Lemmas_all', 'Lemmas_body', 'Lemmas_title', 
+                            'Tokens_all', 'Tokens_body', 'Tokens_title', 
+                            'ZZINVCLUSTER_SIZE']
+    elif features == "tfidf_time":
+        if "tdt4" in dataset_name:
+            feature_list = ['Entities_all','Lemmas_all', 'Tokens_all', 'NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'ZZINVCLUSTER_SIZE']
+        else:
+            feature_list = ['Entities_all', 'Entities_body', 'Entities_title',
+                            'Lemmas_all', 'Lemmas_body', 'Lemmas_title', 
+                            'Tokens_all', 'Tokens_body', 'Tokens_title', 
+                            'NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'ZZINVCLUSTER_SIZE']
+    elif features in set(['tfidf_time_sbert', 'tfidf_time_esbert', 'tfidf_time_sinpe_esbert']):
+        if "tdt4" in dataset_name:
+            feature_list = ['Entities_all','Lemmas_all', 'Tokens_all', 'NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
+        else:
+            feature_list = ['Entities_all', 'Entities_body', 'Entities_title',
+                            'Lemmas_all', 'Lemmas_body', 'Lemmas_title', 
+                            'Tokens_all', 'Tokens_body', 'Tokens_title', 
+                            'NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
+    elif features == "time_sinpe_esbert":
+        feature_list = ['NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
+    elif features == "sinpe_esbert":
+        feature_list = ['ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
+    x_features = np.array([[bof[feat] if feat in bof else 0 for feat in feature_list]])
+    pred = model.predict(x_features)[0]
+    return pred
 
 
 class Document:
@@ -120,16 +154,16 @@ class Cluster:
 
 
 class Aggregator:
-    def __init__(self,  model: model.Model, thr, merge_model: model.Model = None, is_logreg = False):
+    def __init__(self,  model: model.Model, thr, merge_model: model.Model = None, sklearn_model_specs = None):
         self.clusters = []
         self.model = model
         self.thr = thr
         self.merge_model = merge_model
-        self.is_logreg = is_logreg
+        self.sklearn_model_specs = sklearn_model_specs
 
     def PutDocument(self, document):
         best_i = -1
-        best_s = 0.0
+        best_s = -100
         i = -1
         bofs = []
         for cluster in self.clusters:
@@ -138,13 +172,15 @@ class Aggregator:
             bof = sim_bof_dc(document, cluster)
             bofs.append(bof)
             score = model_score(bof, self.model)
+            # print(score)
             if score > best_s and (score > self.thr or self.merge_model):
                 best_s = score
                 best_i = i
 
         if best_i != -1 and self.merge_model:
-            if self.is_logreg:
-                merge_score = logits_regression_model_score(bofs[best_i], self.merge_model)
+            if self.sklearn_model_specs:
+                merge_score = sklearn_model_score(bofs[best_i], self.merge_model, self.sklearn_model_specs)
+                # print(merge_score)
             else:
                 merge_score = model_score(bofs[best_i], self.merge_model) 
             # print()

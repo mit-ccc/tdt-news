@@ -11,6 +11,8 @@
 # python testbench.py
 # python eval.py clustering.out  E:\Corpora\clustering\processed_clusters\dataset.test.json -f
 
+import sys
+sys.path.insert(0,"../")
 import model
 import clustering
 import load_corpora
@@ -18,32 +20,44 @@ import json
 import os
 import argparse
 import pickle 
+from utils import CorpusClass
+from evaluate_model_outputs import evaluate_clusters
+import pandas as pd
+import glob
+from sklearn.neural_network import MLPClassifier
+
 
 parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
+parser.add_argument("--use_cross_validation", type=int, default=0, help="dest dir")
 parser.add_argument("--weight_model_dir", type=str, default="models/en/4_1491902620.876421_10000.0.model", help="source dir")
 parser.add_argument("--merge_model_dir", type=str, default="models/en/md_3", help="dest dir")
 parser.add_argument("--data_path", type=str, default="./output/exp_pos2vec_esbert_ep2_mgn2.0_btch32_norm1.0_max_seq_230_fuse_additive_random_sample_BatchHardTripletLoss/test_data.pickle", help="dest dir")
 parser.add_argument("--output_filename", type=str, default="./svm_en_data/output/xxx", help="dest dir")
 parser.add_argument("--weight_model_ii_file", type=str, default="./dataset/svm_rank.ii", help="dest dir")
+parser.add_argument("--sklearn_model_specs", type=str, default=None, help="dest dir")
 args = parser.parse_args()
     
 
-def test(lang, thr, model_path, model_path_ii, merge_model_path=None, output_filename=None):
+def test(corpus, lang, thr, model_path, model_path_ii, merge_model_path=None, output_filename=None, sklearn_model_specs=None):
     # corpus = load_corpora.load(r"dataset/dataset.test.json",
     #                            r"dataset/clustering.test.json", set([lang]))
-    with open(args.data_path, "rb") as handle:
-        corpus = pickle.load(handle)
+    # with open(args.data_path, "rb") as handle:
+    #     corpus = pickle.load(handle)
     print(lang,"#docs",len(corpus.documents))
     clustering_model = model.Model()
     clustering_model.load(model_path, model_path_ii)
 
     merge_model = None
     if merge_model_path:
-        merge_model = model.Model()
-        merge_model.load_raw(merge_model_path)
+        if "nn_lbfgs" in merge_model_path:
+            with open(merge_model_path, 'rb') as f:
+                merge_model = pickle.load(f)
+        else:
+            merge_model = model.Model()
+            merge_model.load_raw(merge_model_path)
 
-    if "lbfgs" in merge_model_path:
-        aggregator = clustering.Aggregator(clustering_model, thr, merge_model, is_logreg=True) 
+    if "nn_lbfgs" in merge_model_path:
+        aggregator = clustering.Aggregator(clustering_model, thr, merge_model, sklearn_model_specs=args.sklearn_model_specs) 
     else:
         aggregator = clustering.Aggregator(clustering_model, thr, merge_model)
 
@@ -63,24 +77,79 @@ def test(lang, thr, model_path, model_path_ii, merge_model_path=None, output_fil
         ci = 0
         for c in aggregator.clusters:
             for d in c.ids:
-                fo.write(d)
+                fo.write(str(d))
                 fo.write("\t")
                 fo.write(str(ci))
                 fo.write("\n")
             ci += 1
 
-# test('eng', 0.0, r'models/en/4_1491902620.876421_10000.0.model',
-#      r'models/en/example_2017-04-10T193850.536289.ii', r'models/en/md_3')
+
+def show_suggested_configurations(args):
+    # suggest the best configuration
+    print("==SUGGEST CONFIGURATION==")
+    if "cross_validations" not in args.output_filename:
+        cv_dir = os.path.dirname(args.output_filename) + "/cross_validations"
+    else:
+        cv_dir = os.path.dirname(args.output_filename)
+    rows = []
+    for filename in glob.glob(cv_dir+"/*.csv"):
+        df = pd.read_csv(filename)
+        rows.append([os.path.basename(filename)] + df.mean().values[1:].tolist())
+    df = pd.DataFrame(rows, columns=["filename", "precision", "recall", "fscore"])
+    df = df.sort_values(by=["fscore"], ascending=False)
+    print(df.head())
+
+
 def main():
     
-    test('eng', 0.0, args.weight_model_dir,
-        args.weight_model_ii_file, merge_model_path=args.merge_model_dir, output_filename=args.output_filename)
+    if args.use_cross_validation:
+        if "tdt4" in args.data_path:
+            with open('../tdt4/train_dev_final.pickle', 'rb') as handle:
+                train_dev_corpus = pickle.load(handle)
+            with open("../tdt4/tdt4_cv5.pickle", 'rb') as handle:
+                cv_splits = pickle.load(handle)
+        elif "tdt1" in args.data_path:
+            with open('../tdt_pilot_data/train_dev_final.pickle', 'rb') as handle:
+                train_dev_corpus = pickle.load(handle)
+            with open("../tdt_pilot_data/tdt1_cv5.pickle", 'rb') as handle:
+                cv_splits = pickle.load(handle)
+        elif "news2013" in args.data_path:
+            with open('../dataset/train_dev.pickle', 'rb') as handle:
+                train_dev_corpus = pickle.load(handle)
+            with open("../dataset/news2013_cv5.pickle", 'rb') as handle:
+                cv_splits = pickle.load(handle)
+        
+        # run cross validation
+        rows = []
+        for split_idx, (train_index, val_index) in enumerate(cv_splits):
+            val_documents = [d for i, d in enumerate(train_dev_corpus.documents) if i in set(val_index)]  # sorted already
+            val_corpus = CorpusClass(val_documents)
+            split_filename = args.output_filename + "_split{}".format(split_idx)
+            test(val_corpus, 'eng', 0.0, args.weight_model_dir, args.weight_model_ii_file, merge_model_path=args.merge_model_dir, output_filename=split_filename, sklearn_model_specs=args.sklearn_model_specs)
+            precision, recall, fscore = evaluate_clusters(val_corpus, split_filename + "eng" + ".out")
+            rows.append([precision, recall, fscore])
+        df_runs = pd.DataFrame(rows, columns=['precision', 'recall', 'fscore'])
+        df_runs.to_csv(args.output_filename+".csv")
+        print(args.output_filename)
+        print(df_runs)
+        print(df_runs.mean())
 
-    # test('spa', 8.18067, r'models/es/2_1492035151.291134_100.0.model',
-    #      r'models/es/example_2017-04-12T215308.030747.ii')
+        show_suggested_configurations(args)
+        
+    else:
+        if "tdt4" in args.data_path:
+            with open('../tdt4/test_final.pickle', 'rb') as handle:
+                test_corpus = pickle.load(handle)
+        elif "tdt1" in args.data_path:
+            with open('../tdt_pilot_data/test_final.pickle', 'rb') as handle:
+                test_corpus = pickle.load(handle)
+        elif "news2013" in args.data_path:
+            with open('../dataset/test.pickle', 'rb') as handle:
+                test_corpus = pickle.load(handle)
 
-    # test('deu', 8.1175, r'models/de/2_1499938269.299021_100.0.model',
-    #      r'models/de/example_2017-07-13T085725.498310.ii')
+        show_suggested_configurations(args)
+        test(test_corpus, 'eng', 0.0, args.weight_model_dir,
+            args.weight_model_ii_file, merge_model_path=args.merge_model_dir, output_filename=args.output_filename, sklearn_model_specs=args.sklearn_model_specs)
 
 if __name__ == "__main__":
     main()
