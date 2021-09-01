@@ -93,7 +93,7 @@ def main():
 
     # prepare data
     svm_triplet_train_data, m_labels = prepare_data(X, Y, guid_list)
-    svm_triplet_train_data, m_labels = svm_triplet_train_data[7:], m_labels[7:]
+    # svm_triplet_train_data, m_labels = svm_triplet_train_data[7:], m_labels[7:]
     
     Path(os.path.join(args.input_folder, "svm_triplet_weight_models")).mkdir(parents=True, exist_ok=True)
     X_train, Y_train = svm_triplet_train_data, m_labels

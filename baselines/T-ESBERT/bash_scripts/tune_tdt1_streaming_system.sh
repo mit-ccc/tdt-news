@@ -70,20 +70,21 @@ python train_weight_model_svm_triplet.py --input_folder ${input_folder}/${featur
 
 # generate data for mege model with the help of one picked weighting model
 # for instance, I pick `SVM_triplet_c1.0.dat`, you can try a few such as [0.001 0.01 0.1 0.5 1.0 10 100]
+weight_model_c=1000
 python generate_lbfgs_data.py --input_folder ${input_folder} \
 --features ${feature_option} \
---weight_model ${input_folder}/${feature_option}/svm_triplet_weight_models/SVM_triplet_c1.0.dat \
+--weight_model ${input_folder}/${feature_option}/svm_triplet_weight_models/SVM_triplet_c${weight_model_c}.dat \
 --weight_model_ii_file ./meta_features/${feature_option}.ii
 
 # train NN-LBFGS merge models using the data we just generated `train_lbfgs_raw_c1.0.dat`
 # note that the suffix is c1.0 because we want to use the data generated with `SVM_triplet_c1.0.dat`
-python train_merge_model_nn_lbfgs.py --data_path ${input_folder}/${feature_option}/train_lbfgs_raw_c1.0.dat
+python train_merge_model_nn_lbfgs.py --data_path ${input_folder}/${feature_option}/train_lbfgs_raw_c${weight_model_c}.dat
 
 # run cross validation
 mkdir ${input_folder}/${feature_option}/predictions
 mkdir ${input_folder}/${feature_option}/predictions/cross_validations
 # pick c1 that is used earlier
-for c1 in 1.0
+for c1 in ${weight_model_c}
 do
     for c2 in 0.0001 0.001 0.01 0.1 0.5 1.0 10 100 1000
     do
@@ -101,16 +102,16 @@ done
 
 
 # apply the best configuration on the test set
-# feature_option=tfidf_time_esbert
-# input_folder=../output/exp_sbert_tdt1_ep4_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
+feature_option=tfidf_time_esbert
+input_folder=../output/exp_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
 
 # # decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
-# # and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
-# python testbench.py --use_cross_validation 1 \
-# --weight_model_dir ${input_folder}/${feature_option}/svm_triplet_weight_models/SVM_triplet_c1.0.dat \
-# --merge_model_dir ${input_folder}/${feature_option}/nn_lbfgs_merge_models/nn_lbfgs_merge_lr${c2}.md \
-# --output_filename ${input_folder}/${feature_option}/predictions/cross_validations/pred_weightM_c${c1}_mergeM_c${c2} \
-# --data_path ${input_folder}/test_bert.pickle \
-# --weight_model_ii_file ./meta_features/${feature_option}.ii
-# python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_b0_weightM_c0.5_mergeM_c10000eng.out
+# # e.g. put in the right models using "pred_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
+python testbench.py --use_cross_validation 1 \
+--weight_model_dir ${input_folder}/${feature_option}/svm_triplet_weight_models/SVM_triplet_c1000.dat \
+--merge_model_dir ${input_folder}/${feature_option}/nn_lbfgs_merge_models/nn_lbfgs_merge_lr0.1.md \
+--output_filename ${input_folder}/${feature_option}/predictions/cross_validations/pred_weightM_c1000_mergeM_c0.1 \
+--data_path ${input_folder}/test_bert.pickle \
+--weight_model_ii_file ./meta_features/${feature_option}.ii
+python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_weightM_c1000_mergeM_c0.1eng.out
 

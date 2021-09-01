@@ -32,7 +32,7 @@ def main():
 
     Path(os.path.join(args.input_folder, "nn_lbfgs_merge_models")).mkdir(parents=True, exist_ok=True)
     for lr in [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 10, 100, 1000, 10000]:
-        clf = MLPClassifier(random_state=0, solver='lbfgs', learning_rate_init=lr, max_iter=200).fit(X_samp, y_samp)
+        clf = MLPClassifier(random_state=0, solver='lbfgs', learning_rate_init=lr, max_iter=1000).fit(X_samp, y_samp)
         model_out = os.path.join(args.input_folder, "nn_lbfgs_merge_models", "nn_lbfgs_merge_lr{}.md".format(lr))
         with open('{}.pkl'.format(model_out),'wb') as f:
             pickle.dump(clf, f)
