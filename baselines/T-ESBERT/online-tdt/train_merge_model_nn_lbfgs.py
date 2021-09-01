@@ -18,7 +18,7 @@ def main():
     parser.add_argument("-f")
     args = parser.parse_args()
 
-    args.data_path = "../output/exp_sbert_tdt4_ep5_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/tfidf_time/train_lbfgs_raw.dat"
+    # args.data_path = "../output/exp_sbert_tdt4_ep5_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/tfidf_time/train_lbfgs_raw.dat"
 
     # oversampling
     y, X = svm_read_problem(args.data_path)
