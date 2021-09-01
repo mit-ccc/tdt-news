@@ -10,6 +10,7 @@ import numpy as np
 import random
 import argparse
 from pathlib import Path
+from tqdm import tqdm
 
 
 parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
@@ -91,7 +92,7 @@ def generate_svm_merge_data_amazon(input_corpus, output_path, weight_model, feat
     clustersAgg = GoldenAggregator()
     with open(output_path, "w") as out:
         # input_corpus is sorted by time
-        for i, sort_document in enumerate(input_corpus.documents):
+        for i, sort_document in tqdm(enumerate(input_corpus.documents)):
             # add each document to clusters according to their gold cluster labels
             cluster_id = sort_document['cluster']
             bofs, pos_example_idx, has_cluster_match = clustersAgg.PutDocument(Document(sort_document, "???"), cluster_id)
@@ -123,7 +124,7 @@ def generate_svm_merge_data_amazon(input_corpus, output_path, weight_model, feat
                 line = " ".join(string_items)
                 out.write(line)
                 out.write("\n")
-                print(i)
+                # print(i)
 
     label2sents = {
             1: [], # include into a cluster

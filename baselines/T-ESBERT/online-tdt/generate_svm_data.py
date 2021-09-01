@@ -10,6 +10,7 @@ import numpy as np
 import random
 import argparse
 from pathlib import Path
+from tqdm import tqdm
 
 
 parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
@@ -80,7 +81,7 @@ def generate_svm_rank_data(input_corpus, output_path, features="tfidf_time"):
     clustersAgg = GoldenAggregator()
     with open(output_path, "w") as out:
         # train_dev_corpus is sorted by time
-        for i, sort_document in enumerate(input_corpus.documents):
+        for i, sort_document in tqdm(enumerate(input_corpus.documents)):
             # add each document to clusters according to their gold cluster labels
             cluster_id = sort_document['cluster']
             bofs, pos_example_idx, has_cluster_match = clustersAgg.PutDocument(Document(sort_document, "???"), cluster_id)
@@ -114,7 +115,7 @@ def generate_svm_rank_data(input_corpus, output_path, features="tfidf_time"):
                     for j, neg_bof in enumerate(negative_bofs):
                         out.write(_concatenate_items(neg_bof, target=len(negative_bofs)-j, qid=qid))
                         out.write("\n")
-                    print(i)
+                    # print(i)
 
 
 def generate_svm_merge_data(input_corpus, output_path, features="tfidf_time"):
