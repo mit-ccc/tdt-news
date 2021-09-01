@@ -158,7 +158,7 @@ def generate_svm_merge_data(input_corpus, output_path, features="tfidf_time"):
     clustersAgg = GoldenAggregator()
     with open(output_path, "w") as out:
         # input_corpus is sorted by time
-        for i, sort_document in enumerate(input_corpus.documents):
+        for i, sort_document in tqdm(enumerate(input_corpus.documents)):
             # add each document to clusters according to their gold cluster labels
             cluster_id = sort_document['cluster']
             bofs, pos_example_idx, has_cluster_match = clustersAgg.PutDocument(Document(sort_document, "???"), cluster_id)
@@ -199,7 +199,7 @@ def generate_svm_merge_data(input_corpus, output_path, features="tfidf_time"):
                 line = _format_features(max_features, target=label)
                 out.write(line)
                 out.write("\n")
-            print(i)
+            # print(i)
 
     label2sents = {
             1: [], # include into a cluster
