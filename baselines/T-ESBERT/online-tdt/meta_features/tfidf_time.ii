@@ -1,0 +1,12 @@
+1	Entities_all
+2	Entities_body
+3	Entities_title
+4	Lemmas_all
+5	Lemmas_body
+6	Lemmas_title
+7	Tokens_all
+8	Tokens_body
+9	Tokens_title
+10	NEWEST_TS
+11	OLDEST_TS
+12	RELEVANCE_TS
