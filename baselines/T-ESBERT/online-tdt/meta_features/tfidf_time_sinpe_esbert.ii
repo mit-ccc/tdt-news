@@ -7,4 +7,8 @@
 7	Tokens_all
 8	Tokens_body
 9	Tokens_title
-10	ZZINVCLUSTER_SIZE
+10	NEWEST_TS
+11	OLDEST_TS
+12	RELEVANCE_TS
+13	ZZINVCLUSTER_SIZE
+14	bert_sent_embeds
