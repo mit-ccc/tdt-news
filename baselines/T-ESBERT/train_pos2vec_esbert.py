@@ -208,9 +208,9 @@ class PositionTimeESBert(nn.Module):
             self.multi_att = nn.MultiheadAttention(768*2, 8, 0.1).to(device)
             self.norm_layer = LayerNorm(768*2).to(device)
             self.pooler = BertMeanPooler(768*2).to(device)
-        # if freeze_time_module:
-        #     for param in time_model.parameters():
-        #         param.requires_grad = False 
+        if freeze_time_module:
+            for param in time_model.parameters():
+                param.requires_grad = False 
             
     def forward(self, features):
                 
@@ -385,7 +385,7 @@ def compute_time_stamp(string):
     if entity_transformer.split == "train":
         # anchor_date = datetime.strptime("2013-12-18 12:27:00", "%Y-%m-%d %H:%M:%S")
         # anchor_date = datetime.strptime("2000-10-01 00:00:00", "%Y-%m-%d %H:%M:%S")
-        anchor_date = datetime.strptime("1994-07-09 02:30:00", "%Y-%m-%d %H:%M:%S")
+        anchor_date = datetime.strptime("1994-07-09 00:00:00", "%Y-%m-%d %H:%M:%S")
     elif entity_transformer.split == "test":
         # anchor_date = datetime.strptime("2014-11-02 21:18:00", "%Y-%m-%d %H:%M:%S")
         # anchor_date = datetime.strptime("2000-10-01 00:00:00", "%Y-%m-%d %H:%M:%S")

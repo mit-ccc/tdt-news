@@ -48,6 +48,34 @@ do
     --input_folder ../output/exp_esbert_tdt1_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
 done
 
+# Sin-PE-E-BERT + GAC
+for epochnum in 1 2 3
+do
+    echo "epochnum", ${epochnum}
+    python run_retrospective_clustering.py --cluster_algorithm agg_average \
+    --features bert \
+    --gold_cluster_num 12 \
+    --input_folder ../output/exp_pos2vec_esbert_tdt1_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
+done
+
+for epochnum in 1 2 3
+do
+    echo "epochnum", ${epochnum}
+    python run_retrospective_clustering.py --cluster_algorithm agg_average \
+    --features bert \
+    --gold_cluster_num 12 \
+    --input_folder ../output/exp_pos2vec_esbert_tdt1_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_month
+done
+
+for epochnum in 1 2 3
+do
+    echo "epochnum", ${epochnum}
+    python run_retrospective_clustering.py --cluster_algorithm agg_average \
+    --features bert \
+    --gold_cluster_num 12 \
+    --input_folder ../output/exp_pos2vec_esbert_tdt1_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_180day
+done
+
 
 #####################################################################
 ### SBERT : TDT1 -- online training
@@ -540,6 +568,6 @@ do
         echo "min_cluster_size", ${min_cluster_size}, "min_samples", ${min_samples}
         python run_retrospective_clustering.py --cluster_algorithm hdbscan \
         --min_cluster_size ${min_cluster_size} --min_samples ${min_samples} --algorithm boruvka_kdtree \
-        --input_folder ../output/exp_pos2vec_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_additive_concat_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
+        --input_folder ../output/exp_pos2vec_esbert_tdt1_ep2_mgn2.0_btch32_norm1.0_max_seq_230_fuse_additive_concat_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
     done
 done

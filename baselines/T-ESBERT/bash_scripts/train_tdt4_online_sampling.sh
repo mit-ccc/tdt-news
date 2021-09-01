@@ -1,3 +1,4 @@
+# TFIDF + Kmeans
 for i in 1 2 3 4 5
 do
     python run_retrospective_clustering.py 
@@ -7,6 +8,13 @@ do
     --gold_cluster_num 33 \
     --input_folder ../output/exp_sbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
 done
+
+# TFIDF + GAC
+python run_retrospective_clustering.py --cluster_algorithm agg_average \
+    --features tfidf \
+    --gold_cluster_num 33 \
+    --input_folder ../output/exp_sbert_tdt4_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
+
 
 # SBERT + GAC
 for epochnum in 1 2 3 4 5 6 7 8 9 10
@@ -61,6 +69,7 @@ done
 python run_retrospective_clustering.py --cluster_algorithm hdbscan --features tfidf \
         --min_cluster_size 5 --min_samples 1 --algorithm boruvka_kdtree \
         --input_folder ../output/exp_sbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
+
 #####################################################################
 ### SBERT : TDT4 -- online training
 #####################################################################
@@ -464,6 +473,42 @@ do
     done
 done
 
+# additive
+for min_cluster_size in 2 3 4 5 6 7 8 9 10
+do
+    for min_samples in 1 2 3 4 5 6 7 8 9 10
+    do
+        echo "min_cluster_size", ${min_cluster_size}, "min_samples", ${min_samples}
+        python run_retrospective_clustering.py --cluster_algorithm hdbscan \
+        --min_cluster_size ${min_cluster_size} --min_samples ${min_samples} --algorithm boruvka_kdtree \
+        --input_folder ../output/exp_pos2vec_esbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_additive_random_sample_BatchHardTripletLoss_time_month
+    done
+done
+
+# additive_selfatt_pool
+for min_cluster_size in 2 3 4 5 6 7 8 9 10
+do
+    for min_samples in 1 2 3 4 5 6 7 8 9 10
+    do
+        echo "min_cluster_size", ${min_cluster_size}, "min_samples", ${min_samples}
+        python run_retrospective_clustering.py --cluster_algorithm hdbscan \
+        --min_cluster_size ${min_cluster_size} --min_samples ${min_samples} --algorithm boruvka_kdtree \
+        --input_folder ../output/exp_pos2vec_esbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_additive_selfatt_pool_random_sample_BatchHardTripletLoss_time_month
+    done
+done
+
+# additive_concat_selfatt_pool
+for min_cluster_size in 2 3 4 5 6 7 8 9 10
+do
+    for min_samples in 1 2 3 4 5 6 7 8 9 10
+    do
+        echo "min_cluster_size", ${min_cluster_size}, "min_samples", ${min_samples}
+        python run_retrospective_clustering.py --cluster_algorithm hdbscan \
+        --min_cluster_size ${min_cluster_size} --min_samples ${min_samples} --algorithm boruvka_kdtree \
+        --input_folder ../output/exp_pos2vec_esbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_additive_concat_selfatt_pool_random_sample_BatchHardTripletLoss_time_month
+    done
+done
+
 
 #####################################################################
 ### Learned-PE-E-SBERT : tdt4 -- online triplets
@@ -540,3 +585,16 @@ do
     --min_cluster_size 3 --min_samples 3 --algorithm boruvka_kdtree \
     --input_folder ../output/exp_date2vec_esbert_tdt4_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss
 done
+
+for min_cluster_size in 2 3 4 5 6 7 8 9 10
+do
+    for min_samples in 1 2 3 4 5 6 7 8 9 10
+    do
+        echo "min_cluster_size", ${min_cluster_size}, "min_samples", ${min_samples}
+        python run_retrospective_clustering.py --cluster_algorithm hdbscan \
+        --min_cluster_size ${min_cluster_size} --min_samples ${min_samples} --algorithm boruvka_kdtree \
+        --input_folder ../output/exp_date2vec_esbert_tdt4_ep3_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss
+    done
+done
+
+

@@ -11,6 +11,16 @@ python run_retrospective_clustering.py --cluster_algorithm agg_average --feature
     --input_folder ../output/exp_pos2vec_esbert_news2013_ep2_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss
 
 
+# TFIDF + Kmeans
+for i in 1 2 3 4 5
+do
+    python run_retrospective_clustering.py --cluster_algorithm kmeans \
+    --features tfidf \
+    --random_seed ${i} \
+    --gold_cluster_num 222 \
+    --input_folder ../output/exp_sbert_news2013_ep10_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
+done
+
 
 #####################################################################
 ### SBERT : News2013 -- online training
