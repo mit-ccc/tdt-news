@@ -158,16 +158,18 @@ done
 feature_option=tfidf
 input_folder=../output/exp_sbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
 # test ( b0 )
-python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr0.01_ep30.dat \
---merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c10000_b0.md \
---output_filename ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr0.01_libSVM_c10000_b0 \
+python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr10_ep30.dat \
+--merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c100_b0.md \
+--output_filename ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr10_libSVM_c100_b0 \
 --data_path ${input_folder}/test_bert.pickle \
 --weight_model_ii_file ./meta_features/${feature_option}.ii
 
 # decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
 # and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
-python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr0.01_libSVM_c10000_b0eng.out
-
+python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr10_libSVM_c100_b0eng.out
+# ../output/exp_sbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/tfidf/predictions/pred_margin_ranking_lr10_libSVM_c100_b0eng.out
+# predicted cluster num: 15
+# precision: 84.47; recall: 96.33; f-1: 90.01
 
 ################################### TFIDF + TIME ###############################################
 feature_option=tfidf_time
@@ -205,15 +207,18 @@ done
 feature_option=tfidf_time
 input_folder=../output/exp_sbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
 # test ( b0 )
-python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr0.01_ep30.dat \
---merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c10000_b0.md \
---output_filename ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr0.01_libSVM_c10000_b0 \
+python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr1000_ep30.dat \
+--merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c0.001_b0.md \
+--output_filename ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr1000_libSVM_c0.001_b0 \
 --data_path ${input_folder}/test_bert.pickle \
 --weight_model_ii_file ./meta_features/${feature_option}.ii
 
 # decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
 # and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
-python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr0.01_libSVM_c10000_b0eng.out
+python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr1000_libSVM_c0.001_b0eng.out
+# ../output/exp_sbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/tfidf_time/predictions/pred_margin_ranking_lr1000_libSVM_c0.001_b0eng.out
+# predicted cluster num: 18
+# precision: 84.05; recall: 93.77; f-1: 88.65
 
 ################################### TFIDF + TIME + SBERT ###############################################
 feature_option=tfidf_time_sbert
@@ -251,16 +256,18 @@ done
 feature_option=tfidf_time_sbert
 input_folder=../output/exp_sbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
 # test ( b0 )
-python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr0.01_ep30.dat \
---merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c10000_b0.md \
---output_filename ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr0.01_libSVM_c10000_b0 \
+python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr100_ep30.dat \
+--merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c0.0001_b0.md \
+--output_filename ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr100_libSVM_c0.0001_b0 \
 --data_path ${input_folder}/test_bert.pickle \
 --weight_model_ii_file ./meta_features/${feature_option}.ii
 
 # decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
 # and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
-python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr0.01_libSVM_c10000_b0eng.out
-
+python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr100_libSVM_c0.0001_b0eng.out
+# ../output/exp_sbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/tfidf_time_sbert/predictions/pred_margin_ranking_lr100_libSVM_c0.0001_b0eng.out
+# predicted cluster num: 44
+# precision: 76.34; recall: 86.20; f-1: 80.97
 
 ################################### TFIDF + TIME + E-SBERT ###############################################
 feature_option=tfidf_time_esbert
@@ -298,21 +305,23 @@ done
 feature_option=tfidf_time_esbert
 input_folder=../output/exp_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_sample_random
 # test ( b0 )
-python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr0.01_ep30.dat \
---merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c10000_b0.md \
---output_filename ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr0.01_libSVM_c10000_b0 \
+python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr1000_ep30.dat \
+--merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c0.0001_b0.md \
+--output_filename ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr1000_libSVM_c0.0001_b0 \
 --data_path ${input_folder}/test_bert.pickle \
 --weight_model_ii_file ./meta_features/${feature_option}.ii
 
 # decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
 # and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
-python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr0.01_libSVM_c10000_b0eng.out
-
+python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr1000_libSVM_c0.0001_b0eng.out
+# ../output/exp_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_sample_random/tfidf_time_esbert/predictions/pred_margin_ranking_lr1000_libSVM_c0.0001_b0eng.out
+# predicted cluster num: 18
+# precision: 84.47; recall: 95.82; f-1: 89.79
 
 ################################### TFIDF + TIME + SinPE-E-SBERT ###############################################
 feature_option=tfidf_time_sinpe_esbert
 # use ep4 because this is rarely the best fine-tuned model
-input_folder=../output/exp_learned_pe_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
+input_folder=../output/exp_pos2vec_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
 python generate_svm_data.py --input_folder ${input_folder} --features ${feature_option}
 
 # train LR_margin_ranking weight models
@@ -343,23 +352,23 @@ done
 
 # apply the best configuration on the test set
 feature_option=tfidf_time_sinpe_esbert
-input_folder=../output/exp_learned_pe_esbert_tdt1_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
+input_folder=../output/exp_pos2vec_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
 # test ( b0 )
-python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr0.01_ep30.dat \
---merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c10000_b0.md \
---output_filename ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr0.01_libSVM_c10000_b0 \
+python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr10_ep30.dat \
+--merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c0.0005_b0.md \
+--output_filename ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr10_libSVM_c0.0005_b0 \
 --data_path ${input_folder}/test_bert.pickle \
 --weight_model_ii_file ./meta_features/${feature_option}.ii
 
 # decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
 # and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
-python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr0.01_libSVM_c10000_b0eng.out
+python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr10_libSVM_c0.0005_b0eng.out
 
 
 ################################### TFIDF + SinPE-E-SBERT ###############################################
 feature_option=tfidf_sinpe_esbert
 # use ep4 because this is rarely the best fine-tuned model
-input_folder=../output/exp_learned_pe_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
+input_folder=../output/exp_pos2vec_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
 python generate_svm_data.py --input_folder ${input_folder} --features ${feature_option}
 
 # train LR_margin_ranking weight models
@@ -390,7 +399,7 @@ done
 
 # apply the best configuration on the test set
 feature_option=tfidf_sinpe_esbert
-input_folder=../output/exp_learned_pe_esbert_tdt1_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
+input_folder=../output/exp_pos2vec_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
 # test ( b0 )
 python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr0.01_ep30.dat \
 --merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c10000_b0.md \
@@ -407,7 +416,7 @@ python evaluate_model_outputs.py --dataset_name tdt1 --prediction_path ${input_f
 ################################### TIME + SinPE-E-SBERT ###############################################
 feature_option=time_sinpe_esbert
 # use ep4 because this is rarely the best fine-tuned model
-input_folder=../output/exp_learned_pe_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
+input_folder=../output/exp_pos2vec_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
 python generate_svm_data.py --input_folder ${input_folder} --features ${feature_option}
 
 # train LR_margin_ranking weight models
@@ -438,7 +447,7 @@ done
 
 # apply the best configuration on the test set
 feature_option=time_sinpe_esbert
-input_folder=../output/exp_learned_pe_esbert_tdt1_ep${epochnum}_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
+input_folder=../output/exp_pos2vec_esbert_tdt1_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_90day
 # test ( b0 )
 python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr0.01_ep30.dat \
 --merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c10000_b0.md \
