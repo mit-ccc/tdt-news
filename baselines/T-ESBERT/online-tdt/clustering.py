@@ -43,8 +43,8 @@ def normalized_gaussian(mean, stddev, x):
 def timestamp_feature(tsi, tst, gstddev):
   return normalized_gaussian(0, gstddev, (tsi-tst)/(60*60*24.0))
 
-def sim_bof_dc(d0, c1):
-    numdays_stddev = 3.0
+def sim_bof_dc(d0, c1, numdays_stddev=3.0):
+    numdays_stddev = numdays_stddev
     bof = cosine_bof(d0.reprs, c1.reprs)
     bof["NEWEST_TS"] = timestamp_feature(
         d0.timestamp.timestamp(), c1.newest_timestamp.timestamp(), numdays_stddev)
@@ -159,12 +159,13 @@ class Cluster:
 
 
 class Aggregator:
-    def __init__(self,  model: model.Model, thr, merge_model: model.Model = None, sklearn_model_specs = None):
+    def __init__(self,  model: model.Model, thr, merge_model: model.Model = None, sklearn_model_specs = None, numdays_stddev=3.0):
         self.clusters = []
         self.model = model
         self.thr = thr
         self.merge_model = merge_model
         self.sklearn_model_specs = sklearn_model_specs
+        self.numdays_stddev = numdays_stddev
 
     def PutDocument(self, document):
         best_i = -1
@@ -174,7 +175,7 @@ class Aggregator:
         for cluster in self.clusters:
             i += 1
 
-            bof = sim_bof_dc(document, cluster)
+            bof = sim_bof_dc(document, cluster, numdays_stddev=self.numdays_stddev)
             bofs.append(bof)
             score = model_score(bof, self.model)
             # print(score)

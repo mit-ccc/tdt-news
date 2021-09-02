@@ -35,10 +35,11 @@ parser.add_argument("--data_path", type=str, default="./output/exp_pos2vec_esber
 parser.add_argument("--output_filename", type=str, default="./svm_en_data/output/xxx", help="dest dir")
 parser.add_argument("--weight_model_ii_file", type=str, default="./dataset/svm_rank.ii", help="dest dir")
 parser.add_argument("--sklearn_model_specs", type=str, default=None, help="dest dir")
+parser.add_argument("--numdays_stddev", type=int, default=3, help="dest dir")
 args = parser.parse_args()
     
 
-def test(corpus, lang, thr, model_path, model_path_ii, merge_model_path=None, output_filename=None, sklearn_model_specs=None):
+def test(corpus, lang, thr, model_path, model_path_ii, merge_model_path=None, output_filename=None, sklearn_model_specs=None, numdays_stddev=3):
     # corpus = load_corpora.load(r"dataset/dataset.test.json",
     #                            r"dataset/clustering.test.json", set([lang]))
     # with open(args.data_path, "rb") as handle:
@@ -57,20 +58,20 @@ def test(corpus, lang, thr, model_path, model_path_ii, merge_model_path=None, ou
             merge_model.load_raw(merge_model_path)
 
     if "nn_lbfgs" in merge_model_path:
-        aggregator = clustering.Aggregator(clustering_model, thr, merge_model, sklearn_model_specs=args.sklearn_model_specs) 
+        aggregator = clustering.Aggregator(clustering_model, thr, merge_model, sklearn_model_specs=sklearn_model_specs, numdays_stddev=numdays_stddev) 
     else:
-        aggregator = clustering.Aggregator(clustering_model, thr, merge_model)
+        aggregator = clustering.Aggregator(clustering_model, thr, merge_model, numdays_stddev=numdays_stddev)
 
     for i, d in enumerate(corpus.documents):
         print("\r", i, "/", len(corpus.documents),
               " | #c= ", len(aggregator.clusters), end="")
         # # early stop
-        if len(aggregator.clusters) > 1200:
+        if len(aggregator.clusters) > 1500:
             break
         aggregator.PutDocument(clustering.Document(d, "???"))
 
     # early stop
-    if len(aggregator.clusters) > 1200:
+    if len(aggregator.clusters) > 1500:
         return
 
     with open(output_filename+lang+".out", "w") as fo:
@@ -129,7 +130,13 @@ def main():
             val_documents = [d for i, d in enumerate(train_dev_corpus.documents) if i in set(val_index)]  # sorted already
             val_corpus = CorpusClass(val_documents)
             split_filename = args.output_filename + "_split{}".format(split_idx)
-            test(val_corpus, 'eng', 0.0, args.weight_model_dir, args.weight_model_ii_file, merge_model_path=args.merge_model_dir, output_filename=split_filename, sklearn_model_specs=args.sklearn_model_specs)
+            test(val_corpus, 'eng', 0.0, 
+                args.weight_model_dir, 
+                args.weight_model_ii_file, 
+                merge_model_path=args.merge_model_dir, 
+                output_filename=split_filename, 
+                sklearn_model_specs=args.sklearn_model_specs,
+                numdays_stddev=args.numdays_stddev)
             precision, recall, fscore = evaluate_clusters(val_corpus, split_filename + "eng" + ".out")
             rows.append([precision, recall, fscore])
         df_runs = pd.DataFrame(rows, columns=['precision', 'recall', 'fscore'])
@@ -152,8 +159,13 @@ def main():
                 test_corpus = pickle.load(handle)
 
         show_suggested_configurations(args)
-        test(test_corpus, 'eng', 0.0, args.weight_model_dir,
-            args.weight_model_ii_file, merge_model_path=args.merge_model_dir, output_filename=args.output_filename, sklearn_model_specs=args.sklearn_model_specs)
+        test(test_corpus, 'eng', 0.0, 
+            args.weight_model_dir,
+            args.weight_model_ii_file, 
+            merge_model_path=args.merge_model_dir, 
+            output_filename=args.output_filename, 
+            sklearn_model_specs=args.sklearn_model_specs,
+            numdays_stddev=args.numdays_stddev)
 
 if __name__ == "__main__":
     main()

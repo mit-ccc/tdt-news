@@ -16,6 +16,7 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser(description="main training script for word2vec dynamic word embeddings...")
 parser.add_argument("--input_folder", type=str, default="./output/exp_time_esbert_ep2_mgn2.0_btch8_norm1.0_max_seq_128", help="input_folder")
 parser.add_argument("--features", type=str, default="tfidf_time", help="input_folder")
+parser.add_argument("--numdays_stddev", type=int, default=3, help="input_folder")
 parser.add_argument("-f")
 args = parser.parse_args()
 
@@ -33,7 +34,7 @@ class GoldenAggregator:
         
         # calcualte features before adding
         for cluster in self.clusters:
-            bof = sim_bof_dc(document, cluster)
+            bof = sim_bof_dc(document, cluster, numdays_stddev=args.numdays_stddev)
             bofs.append(bof)
         
         if cluster_id not in self.clusterid2idx:
@@ -246,17 +247,25 @@ def main():
 
     args.output_folder = os.path.join(args.input_folder, args.features)
     Path(args.output_folder).mkdir(parents=True, exist_ok=True)
-    
+
     ##############################
     # generate data for SVM-rank, save to train_bert_rank.dat
     ##############################
-    output_path = os.path.join(args.output_folder, "train_svm_rank.dat")
+    if args.numdays_stddev != 3:
+        Path(os.path.join(args.output_folder, str(args.numdays_stddev))).mkdir(parents=True, exist_ok=True)
+        output_path = os.path.join(args.output_folder, str(args.numdays_stddev), "train_svm_rank.dat")
+    else:
+        output_path = os.path.join(args.output_folder, "train_svm_rank.dat")
     generate_svm_rank_data(train_dev_corpus, output_path, features=args.features)
     
     ##############################
     # generate data for SVM-merge
     ##############################
-    output_path2 = os.path.join(args.output_folder, "train_svmlib_raw.dat")
+    if args.numdays_stddev != 3:
+        Path(os.path.join(args.output_folder, str(args.numdays_stddev))).mkdir(parents=True, exist_ok=True)
+        output_path2 = os.path.join(args.output_folder, str(args.numdays_stddev), "train_svmlib_raw.dat")
+    else:
+        output_path2 = os.path.join(args.output_folder, "train_svmlib_raw.dat")
     generate_svm_merge_data(train_dev_corpus, output_path2, features=args.features)
 
 if __name__ == "__main__":
