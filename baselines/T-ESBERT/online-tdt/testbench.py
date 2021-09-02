@@ -64,13 +64,13 @@ def test(corpus, lang, thr, model_path, model_path_ii, merge_model_path=None, ou
     for i, d in enumerate(corpus.documents):
         print("\r", i, "/", len(corpus.documents),
               " | #c= ", len(aggregator.clusters), end="")
-        # early stop
-        if len(aggregator.clusters) > 800:
+        # # early stop
+        if len(aggregator.clusters) > 1200:
             break
         aggregator.PutDocument(clustering.Document(d, "???"))
 
     # early stop
-    if len(aggregator.clusters) > 800:
+    if len(aggregator.clusters) > 1200:
         return
 
     with open(output_filename+lang+".out", "w") as fo:
@@ -101,6 +101,10 @@ def show_suggested_configurations(args):
 
 
 def main():
+
+    print("Running... ")
+    print(args.weight_model_dir)
+    print(args.merge_model_dir)
     
     if args.use_cross_validation:
         if "tdt4" in args.data_path:

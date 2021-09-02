@@ -10,5 +10,4 @@
 10	NEWEST_TS
 11	OLDEST_TS
 12	RELEVANCE_TS
-13	ZZINVCLUSTER_SIZE
-14	bert_sent_embeds
+13	bert_sent_embeds

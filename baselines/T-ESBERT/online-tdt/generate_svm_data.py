@@ -72,6 +72,11 @@ def generate_svm_rank_data(input_corpus, output_path, features="tfidf_time"):
             feature_list = ['NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'bert_sent_embeds']
         else:
             feature_list = ['NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'bert_sent_embeds']
+    elif features in "tfidf_sinpe_esbert":
+        if "tdt4" in args.input_folder:
+            feature_list = ['Entities_all', 'Lemmas_all', 'Tokens_all', 'bert_sent_embeds']
+        else:
+            feature_list = ['Entities_all', 'Entities_body', 'Entities_title', 'Lemmas_all', 'Lemmas_body', 'Lemmas_title', 'Tokens_all', 'Tokens_body', 'Tokens_title', 'bert_sent_embeds']
     elif features in "sinpe_esbert":
         if "tdt4" in args.input_folder:
             feature_list = ['bert_sent_embeds']
@@ -149,6 +154,11 @@ def generate_svm_merge_data(input_corpus, output_path, features="tfidf_time"):
             feature_list = ['NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
         else:
             feature_list = ['NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
+    elif features in "tfidf_sinpe_esbert":
+        if "tdt4" in args.input_folder:
+            feature_list = ['Entities_all', 'Lemmas_all', 'Tokens_all', 'ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
+        else:
+            feature_list = ['Entities_all', 'Entities_body', 'Entities_title', 'Lemmas_all', 'Lemmas_body', 'Lemmas_title', 'Tokens_all', 'Tokens_body', 'Tokens_title', 'ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
     elif features in "sinpe_esbert":
         if "tdt4" in args.input_folder:
             feature_list = ['ZZINVCLUSTER_SIZE', 'bert_sent_embeds']

@@ -18,7 +18,6 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_folder", type=str, default="./output/exp_time_esbert_ep2_mgn2.0_btch8_norm1.0_max_seq_128/time_esbert_model_ep1.pt", help="input_folder")
-parser.add_argument("--c", type=float, default=0.01)
 parser.add_argument("--lr", type=float, default=0.1)
 parser.add_argument("--batchsize", type=int, default=32)
 parser.add_argument("--epoch", type=int, default=30)
@@ -147,15 +146,13 @@ def main():
     # train and save
     Path(os.path.join(args.input_folder, "margin_ranking_weight_models")).mkdir(parents=True, exist_ok=True)
     svm_triplet_train_data, m_labels = prepare_data(X, Y, guid_list)
-    for c in [0.01, 0.1, 1.0]:
-        for lr in [0.1]:
-            model = nn.Linear(X.shape[1], 1)
-            model.to(args.device)
-            args.c = c
-            args.lr = lr
-            train(svm_triplet_train_data, m_labels, model, args)
-            save_pytorch_model(model, os.path.join(args.input_folder, "margin_ranking_weight_models", "margin_ranking_c{}_lr{}_ep{}.dat".format(c, lr, args.epoch)))
-            print("Fisnihed saving model with c {} lr {}".format(c, lr))
+    for lr in [0.001, 0.01, 0.1, 0.5, 1.0, 10, 100, 1000]:
+        model = nn.Linear(X.shape[1], 1)
+        model.to(args.device)
+        args.lr = lr
+        train(svm_triplet_train_data, m_labels, model, args)
+        save_pytorch_model(model, os.path.join(args.input_folder, "margin_ranking_weight_models", "margin_ranking_lr{}_ep{}.dat".format(lr, args.epoch)))
+        print("Fisnihed saving model with lr {}".format(lr))
 
 if __name__ == "__main__":
     main()

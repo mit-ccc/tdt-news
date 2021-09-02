@@ -35,8 +35,14 @@ def convert_model_format(model_in, model_out, features="tfidf_time"):
                             'Lemmas_all', 'Lemmas_body', 'Lemmas_title', 
                             'Tokens_all', 'Tokens_body', 'Tokens_title', 
                             'NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
+    elif features == "tfidf_sinpe_esbert":
+        if "tdt4" in model_in:
+            feature_list = ['Entities_all', 'Lemmas_all', 'Tokens_all', 'ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
+        else:
+            feature_list = ['Entities_all', 'Entities_body', 'Entities_title', 'Lemmas_all', 'Lemmas_body', 'Lemmas_title', 'Tokens_all', 'Tokens_body', 'Tokens_title', 'ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
     elif features == "time_sinpe_esbert":
         feature_list = ['NEWEST_TS', 'OLDEST_TS', 'RELEVANCE_TS', 'ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
+
     elif features == "sinpe_esbert":
         feature_list = ['ZZINVCLUSTER_SIZE', 'bert_sent_embeds']
     
