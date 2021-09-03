@@ -217,9 +217,9 @@ python evaluate_model_outputs.py --dataset_name tdt4 --prediction_path ${input_f
 # predicted cluster num: 56
 # precision: 94.14; recall: 88.90; f-1: 91.45
 
-########################## numdays_stddev 10, 30, 60, 90, 120 ##########################################################
+########################## numdays_stddev 5, 10, 30, 60, 90, 120 ##########################################################
 feature_option=tfidf_time
-numdays_stddev=10
+numdays_stddev=5
 # use ep4 because this is rarely the best fine-tuned model
 input_folder=../output/exp_pos2vec_esbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_month
 python generate_svm_data.py --input_folder ${input_folder} --features ${feature_option} --numdays_stddev ${numdays_stddev}
@@ -250,15 +250,106 @@ do
     done
 done
 
+# 5
 feature_option=tfidf_time
-python testbench.py --weight_model_dir ${input_folder}/${feature_option}/margin_ranking_weight_models/margin_ranking_lr1.0_ep30.dat \
---merge_model_dir ${input_folder}/${feature_option}/svm_merge_models_smote/libSVM_c10_b0.md \
---output_filename ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr1.0_libSVM_c10_b0 \
+numdays_stddev=5
+python testbench.py --numdays_stddev ${numdays_stddev} \
+--weight_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/margin_ranking_weight_models/margin_ranking_lr0.5_ep30.dat \
+--merge_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/svm_merge_models_smote/libSVM_c1000_b0.md \
+--output_filename ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr0.5_libSVM_c1000_b0 \
 --data_path ${input_folder}/test_bert.pickle \
 --weight_model_ii_file ./meta_features/tdt4/${feature_option}.ii
 # decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
 # and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
-python evaluate_model_outputs.py --dataset_name tdt4 --prediction_path ${input_folder}/${feature_option}/predictions/pred_margin_ranking_lr1.0_libSVM_c10_b0eng.out
+python evaluate_model_outputs.py --dataset_name tdt4 --prediction_path ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr0.5_libSVM_c1000_b0eng.out
+
+# ../output/exp_pos2vec_esbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_month/tfidf_time/5/predictions/pred_margin_ranking_lr0.5_libSVM_c1000_b0eng.out
+# predicted cluster num: 59
+# precision: 91.68; recall: 86.52; f-1: 89.03
+
+# 10
+feature_option=tfidf_time
+numdays_stddev=10
+python testbench.py --numdays_stddev ${numdays_stddev} \
+--weight_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/margin_ranking_weight_models/margin_ranking_lr100_ep30.dat \
+--merge_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/svm_merge_models_smote/libSVM_c10000_b0.md \
+--output_filename ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr100_libSVM_c10000_b0 \
+--data_path ${input_folder}/test_bert.pickle \
+--weight_model_ii_file ./meta_features/tdt4/${feature_option}.ii
+# decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
+# and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
+python evaluate_model_outputs.py --dataset_name tdt4 --prediction_path ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr100_libSVM_c10000_b0eng.out
+# ../output/exp_pos2vec_esbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_month/tfidf_time/10/predictions/pred_margin_ranking_lr100_libSVM_c10000_b0eng.out
+# predicted cluster num: 67
+# precision: 93.53; recall: 83.15; f-1: 88.03
+
+# 30
+feature_option=tfidf_time
+numdays_stddev=30
+python testbench.py --numdays_stddev ${numdays_stddev} \
+--weight_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/margin_ranking_weight_models/margin_ranking_lr1000_ep30.dat \
+--merge_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/svm_merge_models_smote/libSVM_c100_b0.md \
+--output_filename ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr1000_libSVM_c100_b0 \
+--data_path ${input_folder}/test_bert.pickle \
+--weight_model_ii_file ./meta_features/tdt4/${feature_option}.ii
+# decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
+# and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
+python evaluate_model_outputs.py --dataset_name tdt4 --prediction_path ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr1000_libSVM_c100_b0eng.out
+
+# ../output/exp_pos2vec_esbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_month/tfidf_time/30/predictions/pred_margin_ranking_lr1000_libSVM_c100_b0eng.out
+# predicted cluster num: 66
+# precision: 93.81; recall: 86.09; f-1: 89.79
+
+# 60
+feature_option=tfidf_time
+numdays_stddev=60
+python testbench.py --numdays_stddev ${numdays_stddev} \
+--weight_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/margin_ranking_weight_models/margin_ranking_lr10_ep30.dat \
+--merge_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/svm_merge_models_smote/libSVM_c1.0_b0.md \
+--output_filename ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr10_libSVM_c1.0_b0 \
+--data_path ${input_folder}/test_bert.pickle \
+--weight_model_ii_file ./meta_features/tdt4/${feature_option}.ii
+# decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
+# and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
+python evaluate_model_outputs.py --dataset_name tdt4 --prediction_path ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr10_libSVM_c1.0_b0eng.out
+
+# ../output/exp_pos2vec_esbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_month/tfidf_time/60/predictions/pred_margin_ranking_lr10_libSVM_c1.0_b0eng.out
+# predicted cluster num: 61
+# precision: 94.99; recall: 88.91; f-1: 91.85
+
+# 90
+feature_option=tfidf_time
+numdays_stddev=90
+python testbench.py --numdays_stddev ${numdays_stddev} \
+--weight_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/margin_ranking_weight_models/margin_ranking_lr0.1_ep30.dat \
+--merge_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/svm_merge_models_smote/libSVM_c10_b0.md \
+--output_filename ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr0.1_libSVM_c10_b0 \
+--data_path ${input_folder}/test_bert.pickle \
+--weight_model_ii_file ./meta_features/tdt4/${feature_option}.ii
+# decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
+# and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
+python evaluate_model_outputs.py --dataset_name tdt4 --prediction_path ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr0.1_libSVM_c10_b0eng.out
+
+# ../output/exp_pos2vec_esbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_month/tfidf_time/90/predictions/pred_margin_ranking_lr0.1_libSVM_c10_b0eng.out
+# predicted cluster num: 71
+# precision: 93.96; recall: 82.15; f-1: 87.66
+
+# 120
+feature_option=tfidf_time
+numdays_stddev=120
+python testbench.py --numdays_stddev ${numdays_stddev} \
+--weight_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/margin_ranking_weight_models/margin_ranking_lr1.0_ep30.dat \
+--merge_model_dir ${input_folder}/${feature_option}/${numdays_stddev}/svm_merge_models_smote/libSVM_c10_b0.md \
+--output_filename ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr1.0_libSVM_c10_b0 \
+--data_path ${input_folder}/test_bert.pickle \
+--weight_model_ii_file ./meta_features/tdt4/${feature_option}.ii
+# decide "pred_b0_weightM_c0.5_mergeM_c10000" is the best configuration
+# and put in the right models using "pred_b0_weightM_c0.5_mergeM_c10000" --> weight_model_svmrank_c0.5.dat and libSVM_c10000_b0.md
+python evaluate_model_outputs.py --dataset_name tdt4 --prediction_path ${input_folder}/${feature_option}/${numdays_stddev}/predictions/pred_margin_ranking_lr1.0_libSVM_c10_b0eng.out
+
+# ../output/exp_pos2vec_esbert_tdt4_ep1_mgn2.0_btch32_norm1.0_max_seq_230_fuse_selfatt_pool_random_sample_BatchHardTripletLoss_time_month/tfidf_time/120/predictions/pred_margin_ranking_lr1.0_libSVM_c10_b0eng.out
+# predicted cluster num: 59
+# precision: 94.67; recall: 88.69; f-1: 91.58
 
 
 
