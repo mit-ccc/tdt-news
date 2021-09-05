@@ -9,9 +9,14 @@ from glob import glob
 import argparse
 from pathlib import Path
 from utils import CorpusClass
-
+from metric import *
+from sklearn.metrics.cluster import v_measure_score
+from sklearn.metrics.cluster import adjusted_rand_score
+from sklearn.metrics.cluster import adjusted_mutual_info_score
+from sklearn.metrics.cluster import fowlkes_mallows_score
 
 def evaluate_clusters(test_corpus, outputname="./clustering.eng.out.ranksvm"):
+    ldict_ = {}
     ldict = {} #docID 2 clusterIDs
     for d in test_corpus.documents:
         doc_id = int(d['id'])
@@ -20,7 +25,14 @@ def evaluate_clusters(test_corpus, outputname="./clustering.eng.out.ranksvm"):
             ldict[doc_id].add(cluster_id)
         else:
             ldict[doc_id] = set([cluster_id])
-
+        if cluster_id in ldict_:
+            ldict_[cluster_id].append(doc_id)
+        else:
+            ldict_[cluster_id] = [doc_id]
+    llist = []
+    for key, value in ldict_.items():
+        llist.append(value)
+    cdict_ = {}
     cdict = {}
     pred_cluster_set = set([])
     with open(outputname) as f:
@@ -32,11 +44,27 @@ def evaluate_clusters(test_corpus, outputname="./clustering.eng.out.ranksvm"):
                 cdict[doc_id].add(cluster_id)
             else:
                 cdict[doc_id] = set([cluster_id])
-    
+            if cluster_id in cdict_:
+                cdict_[cluster_id].append(doc_id)
+            else:
+                cdict_[cluster_id] = [doc_id]
+    clist = []
+    for key, value in cdict_.items():
+        clist.append(value)
+
+    l_sk = []
+    c_sk = []
+    for key, value in ldict.items():
+        l_sk.append(list(ldict[key])[0])
+        c_sk.append(list(cdict[key])[0])
+    print("v_measure_score: ", v_measure_score(l_sk,c_sk))
+    print("adjusted_rand_score: ", adjusted_rand_score(l_sk,c_sk))
+    print("adjusted_mutual_info_score: ", adjusted_mutual_info_score(l_sk,c_sk))
+    print("fowlkes_mallows_score: ", fowlkes_mallows_score(l_sk,c_sk))
+    print(CorefAllMetrics()._compute_coref_metrics(clist, llist))
     precision = bcubed.precision(cdict, ldict)
     recall = bcubed.recall(cdict, ldict)
     fscore = bcubed.fscore(precision, recall)
-    
     print("predicted cluster num:", len(pred_cluster_set))
     precision, recall, fscore = 100*float(precision), 100*float(recall), 100*float(fscore)
     print("precision: {:.2f}; recall: {:.2f}; f-1: {:.2f}".format(precision, recall, fscore))
