@@ -59,7 +59,7 @@ def evaluate_clusters(test_corpus, outputname="./clustering.eng.out.ranksvm"):
         c_sk.append(list(cdict[key])[0])
     print("v_measure_score: ", v_measure_score(l_sk,c_sk))
     print("adjusted_rand_score: ", adjusted_rand_score(l_sk,c_sk))
-    print("adjusted_mutual_info_score: ", adjusted_mutual_info_score(l_sk,c_sk))
+    print("adjusted_mutual_info_score: ", adjusted_mutual_info_score(l_sk,c_sk,average_method="min"))
     print("fowlkes_mallows_score: ", fowlkes_mallows_score(l_sk,c_sk))
     print(CorefAllMetrics()._compute_coref_metrics(clist, llist))
     precision = bcubed.precision(cdict, ldict)
