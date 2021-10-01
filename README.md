@@ -14,11 +14,11 @@ pip install -r requirements.txt
 
 ### Pre-trained SBERT
 
-- download pre-trained sBERT model to `pretrained_bert` folder and convert its format to our model's format: 
-    - `python download_pretrained_bert.py`
-    - `mkdir ./pretrained_bert/exp_sbert_pretrained_max_seq_128`
-    - `mv ./pretrained_bert/SBERT-base-nli-stsb-mean-tokens.pt ./pretrained_bert/exp_sbert_pretrained_max_seq_128/`
-    - NOTE: we use "bert-base-nli-stsb-mean-tokens" BERT in our experiments
+```download pre-trained base-nli-stsb-mean-tokens BERT model
+cd scripts
+sh download_pretrained_bert.sh
+```
+
 
 ### News2013 Data
 
