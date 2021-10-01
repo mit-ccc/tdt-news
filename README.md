@@ -4,14 +4,15 @@
 
 ## Getting started
 
-### install packages 
+### Installation
 
 ```The following versions are important
 pip install -r requirements.txt
 ```
 
+## Pre-trained Model & Data
 
-### download pre-trained BERT model
+### Pre-trained SBERT
 
 - download pre-trained sBERT model to `pretrained_bert` folder and convert its format to our model's format: 
     - `python download_pretrained_bert.py`
@@ -19,7 +20,7 @@ pip install -r requirements.txt
     - `mv ./pretrained_bert/SBERT-base-nli-stsb-mean-tokens.pt ./pretrained_bert/exp_sbert_pretrained_max_seq_128/`
     - NOTE: we use "bert-base-nli-stsb-mean-tokens" BERT in our experiments
 
-### download News2013 data
+### News2013 Data
 
 - download raw data: `sh download_data.sh` (stored in `./dataset/`)
 - download processed data in pickle format: `train_dev.pickle` and `test.pickle` [here](https://drive.google.com/drive/u/1/folders/1JCm2S9euC2AhyP9_IFcnMmUZN3tGG9nF) and put into `./dataset/`
