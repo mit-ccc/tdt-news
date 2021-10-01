@@ -88,7 +88,8 @@ def main():
     Path(args.output_folder).mkdir(parents=True, exist_ok=True)
    
     # for c in [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]:
-    for c in [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 10, 100, 1000, 10000]:
+    for c in [0.0000001, 0.000001, 0.00001, 0.00002, 0.00003, 0.00004, 0.00005, 0.00006, 0.00007, 0.00008, 0.00009, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 10, 100, 1000, 10000, 100000, 1000000, 10000000]:
+    # for c in [0.0001]:
         m = train(y_samp, X_samp, '-c {} -B 0.0'.format(c))
         model_in = os.path.join(args.output_folder, 'libSVM_c{}_b0.model'.format(c))
         model_out = os.path.join(args.output_folder, 'libSVM_c{}_b0.md'.format(c))
@@ -97,13 +98,13 @@ def main():
         convert_model_format(model_in, model_out, features=args.features)
     
     # for c in [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]:
-    for c in [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 10, 100, 1000, 10000]:
-        m = train(y_samp, X_samp, '-c {} -B 1.0'.format(c))
-        model_in = os.path.join(args.output_folder, 'libSVM_c{}_b1.model'.format(c))
-        model_out = os.path.join(args.output_folder, 'libSVM_c{}_b1.md'.format(c))
-        save_model(model_in, m)
-        print("saving model {}".format(model_out))
-        convert_model_format(model_in, model_out, features=args.features)
+    # for c in [0.0000001, 0.000001, 0.00001, 0.00002, 0.00003, 0.00004, 0.00005, 0.00006, 0.00007, 0.00008, 0.00009, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 10, 100, 1000, 10000, 100000, 1000000, 10000000]:
+    #     m = train(y_samp, X_samp, '-c {} -B 1.0'.format(c))
+    #     model_in = os.path.join(args.output_folder, 'libSVM_c{}_b1.model'.format(c))
+    #     model_out = os.path.join(args.output_folder, 'libSVM_c{}_b1.md'.format(c))
+    #     save_model(model_in, m)
+    #     print("saving model {}".format(model_out))
+    #     convert_model_format(model_in, model_out, features=args.features)
 
 
 if __name__ == "__main__":

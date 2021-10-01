@@ -99,7 +99,7 @@ def show_suggested_configurations(args):
     df = pd.DataFrame(rows, columns=["filename", "precision", "recall", "fscore"])
     df = df.sort_values(by=["fscore"], ascending=False)
     print(df.head())
-    print(df.iloc[0].filename)
+    # print(df.iloc[0].filename)
 
 def main():
 

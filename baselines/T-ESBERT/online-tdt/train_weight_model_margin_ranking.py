@@ -146,7 +146,10 @@ def main():
     # train and save
     Path(os.path.join(args.input_folder, "margin_ranking_weight_models")).mkdir(parents=True, exist_ok=True)
     svm_triplet_train_data, m_labels = prepare_data(X, Y, guid_list)
-    for lr in [0.001, 0.01, 0.1, 0.5, 1.0, 10, 100, 1000]:
+    # for lr in [0.5, 0.01]:
+    for lr in [0.00001, 0.0001, 0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 10, 100, 1000, 10000]:
+    # for lr in [0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99, 1.0]:
+    # for lr in [0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4]:
         model = nn.Linear(X.shape[1], 1)
         model.to(args.device)
         args.lr = lr

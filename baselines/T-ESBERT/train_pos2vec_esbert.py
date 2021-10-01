@@ -383,13 +383,13 @@ def compute_time_stamp(string):
     """
     # the start date is fixed
     if entity_transformer.split == "train":
-        # anchor_date = datetime.strptime("2013-12-18 12:27:00", "%Y-%m-%d %H:%M:%S")
+        anchor_date = datetime.strptime("2013-12-18 12:27:00", "%Y-%m-%d %H:%M:%S")
         # anchor_date = datetime.strptime("2000-10-01 00:00:00", "%Y-%m-%d %H:%M:%S")
-        anchor_date = datetime.strptime("1994-07-09 00:00:00", "%Y-%m-%d %H:%M:%S")
+        # anchor_date = datetime.strptime("1994-07-09 00:00:00", "%Y-%m-%d %H:%M:%S")
     elif entity_transformer.split == "test":
-        # anchor_date = datetime.strptime("2014-11-02 21:18:00", "%Y-%m-%d %H:%M:%S")
+        anchor_date = datetime.strptime("2014-11-02 21:18:00", "%Y-%m-%d %H:%M:%S")
         # anchor_date = datetime.strptime("2000-10-01 00:00:00", "%Y-%m-%d %H:%M:%S")
-        anchor_date = datetime.strptime("1994-07-04 00:00:00", "%Y-%m-%d %H:%M:%S")
+        # anchor_date = datetime.strptime("1994-07-04 00:00:00", "%Y-%m-%d %H:%M:%S")
     else:
         print("entity_transformer.split IS WRONG")
     date_obj = datetime.strptime(string, "%Y-%m-%d %H:%M:%S")
@@ -455,6 +455,9 @@ def main():
     
     # continue training
     parser.add_argument("--continue_model_path", type=str, default=None, help="dest dir")
+
+    # marker
+    parser.add_argument("--run_marker", type=str, default=None, help="dest dir")
 
     args = parser.parse_args()
 
@@ -564,6 +567,8 @@ def main():
         folder_name = "{}_time_{}".format(folder_name, args.time_encoding)
     if args.continue_model_path:
         folder_name = "{}_continued_training".format(folder_name)
+    if args.run_marker:
+        folder_name = "{}_run_{}".format(folder_name, args.run_marker)
     os.makedirs(folder_name, exist_ok=True)
     train(loss_model, 
         train_dataloader,

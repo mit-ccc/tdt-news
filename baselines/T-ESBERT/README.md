@@ -18,6 +18,10 @@ export CUDA_VISIBLE_DEVICES=5
 
 - install [svm_rank](https://www.cs.cornell.edu/people/tj/svm_light/svm_rank.html) in this directory
 - install the following packages
+- for liblinear installation, you need to install gcc in Linux
+    - `apt-get update`
+    - `apt-get -y install gcc`
+    - `sudo apt-get install g++`
 
 ```The following versions are important
 pip install -U sentence-transformers
@@ -27,6 +31,7 @@ pip install -U liblinear-official
 pip install smote_variants
 pip install imbalanced_databases
 ```
+
 
 ### download pre-trained BERT model
 
