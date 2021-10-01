@@ -7,12 +7,7 @@
 ### install packages 
 
 ```The following versions are important
-pip install -U sentence-transformers
-pip install transformers==3.5.0
-pip install torch==1.6.0
-pip install -U liblinear-official
-pip install smote_variants
-pip install imbalanced_databases
+pip install -r requirements.txt
 ```
 
 
@@ -30,13 +25,25 @@ pip install imbalanced_databases
 - download processed data in pickle format: `train_dev.pickle` and `test.pickle` [here](https://drive.google.com/drive/u/1/folders/1JCm2S9euC2AhyP9_IFcnMmUZN3tGG9nF) and put into `./dataset/`
     - NOTE: you can check 'preprocessing/extract-entities.ipynb' to see how entities are extracted with spacy
 
+## Training
 
-## BERT finetuning + retrospective TDT 
+### Fine-tuning T-E-BERT
 
+- check `bash_scripts/finetune_news2013_bert.sh`
+
+### Retrospective TDT 
+
+- read the `README.md` inside `retrospective-tdt`
 - check `sh bash_scripts/train_news2013_offline.sh`
 
+### Online TDT 
 
-## Online TDT Task 
+- read the `README.md` inside `retrospective-tdt`
+- check `sh bash_scripts/train_news2013_online.sh`
 
-- after bert finetuning is done as shown above, run the following to get online results:
-    - `sh bash_scripts/train_news2013_online.sh`
+## Contact
+Hang Jiang (hjian42@mit.edu)
+
+## Acknowledgement
+
+This code is developed on the following two github projects: [sentence-transformers](https://github.com/UKPLab/sentence-transformers) and [news-clustering](https://github.com/Priberam/news-clustering). 
