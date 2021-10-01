@@ -6,7 +6,7 @@
 2. SVM-liblinear: `pip install -U liblinear-official`
 
 
-## trouble shooting for installing liblinear
+## trouble shooting for liblinear installation
 - `apt-get update`
 - `apt-get -y install gcc`
 - `sudo apt-get install g++`
