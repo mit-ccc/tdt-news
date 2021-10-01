@@ -2,7 +2,7 @@
 
 ## install SVM packages
 
-1. SVM-rank: follow instructions to install [svm_rank](https://www.cs.cornell.edu/people/tj/svm_light/svm_rank.html) in this directory
+1. SVM-rank: follow instructions to install [svm_rank](https://www.cs.cornell.edu/people/tj/svm_light/svm_rank.html) in the main directory `../`
 2. SVM-liblinear: `pip install -U liblinear-official`
 
 
