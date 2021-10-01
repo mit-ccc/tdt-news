@@ -7,6 +7,6 @@
 
 
 ## trouble shooting for installing liblinear
-- apt-get update
-- apt-get -y install gcc
-- sudo apt-get install g++
+- `apt-get update`
+- `apt-get -y install gcc`
+- `sudo apt-get install g++`
